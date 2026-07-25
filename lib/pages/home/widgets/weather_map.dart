@@ -100,10 +100,14 @@ class _WeatherMapContent extends StatefulWidget {
 }
 
 class _WeatherMapContentState extends State<_WeatherMapContent> {
+  static const _fullMapMinZoom = 3.0;
+  static const _fullMapMaxZoom = 12.0;
   late final Future<String?> _radarTileTemplate;
   late final Future<CacheStore> _tileCacheStore;
+  late final MapController _mapController;
   Dio? _tileDio;
   CachedTileProvider? _tileProvider;
+  double _zoom = 7;
 
   @override
   void initState() {
@@ -112,6 +116,7 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
     _radarTileTemplate = RainViewerService.getLatestRadarTileTemplate();
     // Opens the shared file cache before either map layer requests tiles.
     _tileCacheStore = MapTileCache.store;
+    _mapController = MapController();
   }
 
   @override
@@ -133,9 +138,21 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
     );
   }
 
+  // Moves the full-screen map while keeping slider and gesture zoom in sync.
+  void _setZoom(double zoom) {
+    final targetZoom = zoom.clamp(_fullMapMinZoom, _fullMapMaxZoom).toDouble();
+    _mapController.move(_mapController.camera.center, targetZoom);
+  }
+
+  void _handlePositionChanged(MapCamera camera, bool _) {
+    if (!widget.interactive || (camera.zoom - _zoom).abs() < 0.01) return;
+    setState(() => _zoom = camera.zoom);
+  }
+
   @override
   Widget build(BuildContext context) {
     final center = LatLng(widget.city.lat, widget.city.lon);
+    final colorScheme = Theme.of(context).colorScheme;
     return FutureBuilder<CacheStore>(
       future: _tileCacheStore,
       builder: (context, cacheSnapshot) {
@@ -151,12 +168,17 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
             return Stack(
               children: [
                 FlutterMap(
+                  mapController: _mapController,
                   options: MapOptions(
                     initialCenter: center,
                     initialZoom: widget.interactive ? 7 : 5,
+                    minZoom: widget.interactive ? _fullMapMinZoom : null,
+                    maxZoom: widget.interactive ? _fullMapMaxZoom : null,
+                    onPositionChanged: _handlePositionChanged,
                     interactionOptions: InteractionOptions(
+                      // Keeps pan and zoom gestures while preventing rotation.
                       flags: widget.interactive
-                          ? InteractiveFlag.all
+                          ? InteractiveFlag.all & ~InteractiveFlag.rotate
                           : InteractiveFlag.none,
                     ),
                   ),
@@ -165,6 +187,8 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
                       urlTemplate: AppConstants.openStreetMapTileUrl,
                       userAgentPackageName: 'space.claret.zephyr',
                       tileProvider: tileProvider,
+                      // Combines higher-zoom OSM tiles to keep high-DPI maps sharp.
+                      retinaMode: RetinaMode.isHighDensity(context),
                     ),
                     if (snapshot.data != null)
                       Opacity(
@@ -194,6 +218,52 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
                 ),
                 if (snapshot.connectionState == ConnectionState.waiting)
                   const Center(child: CircularProgressIndicator()),
+                if (widget.interactive)
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: Material(
+                      color: colorScheme.surfaceContainerHigh
+                          .withValues(alpha: 0.82),
+                      elevation: 3,
+                      borderRadius: BorderRadius.circular(24),
+                      child: SizedBox(
+                        width: 48,
+                        height: 216,
+                        child: Column(
+                          children: [
+                            IconButton(
+                              tooltip: 'Zoom in',
+                              onPressed: _zoom >= _fullMapMaxZoom
+                                  ? null
+                                  : () => _setZoom(_zoom + 1),
+                              icon: const Icon(Icons.add),
+                            ),
+                            Expanded(
+                              child: RotatedBox(
+                                quarterTurns: 3,
+                                child: Slider(
+                                  value: _zoom,
+                                  min: _fullMapMinZoom,
+                                  max: _fullMapMaxZoom,
+                                  divisions: 18,
+                                  label: _zoom.toStringAsFixed(1),
+                                  onChanged: _setZoom,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Zoom out',
+                              onPressed: _zoom <= _fullMapMinZoom
+                                  ? null
+                                  : () => _setZoom(_zoom - 1),
+                              icon: const Icon(Icons.remove),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   left: 8,
                   bottom: 8,
