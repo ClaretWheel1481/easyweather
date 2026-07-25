@@ -377,17 +377,22 @@ class _LLMSettingsPageState extends State<LLMSettingsPage> {
                     onChanged: _onSelectionChanged,
                     child: Column(
                       children: _providers.map((p) {
-                        return RadioListTile<String>(
-                          title: Text(p.name),
-                          subtitle: Text(
-                            AIProviderTemplates.getTemplate(p.endpointType).label,
-                            style: textTheme.bodySmall,
-                          ),
-                          value: p.id,
-                          contentPadding: EdgeInsets.zero,
-                          secondary: IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20),
-                            onPressed: () => _deleteProvider(p.id),
+                        // Keeps the tile's ink effects above the colored card.
+                        return Material(
+                          type: MaterialType.transparency,
+                          child: RadioListTile<String>(
+                            title: Text(p.name),
+                            subtitle: Text(
+                              AIProviderTemplates.getTemplate(p.endpointType)
+                                  .label,
+                              style: textTheme.bodySmall,
+                            ),
+                            value: p.id,
+                            contentPadding: EdgeInsets.zero,
+                            secondary: IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 20),
+                              onPressed: () => _deleteProvider(p.id),
+                            ),
                           ),
                         );
                       }).toList(),

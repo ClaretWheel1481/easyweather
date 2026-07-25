@@ -50,23 +50,27 @@ class _LanguageSelectorWidgetState extends State<LanguageSelectorWidget> {
                               ? colorScheme.primary.withValues(alpha: 0.1)
                               : Colors.transparent,
                         ),
-                        child: RadioListTile<int>(
-                          title: Text(
-                            supportedLanguageNames[index],
-                            style: currentIndex == index
-                                ? textTheme.bodyLarge?.copyWith(
-                                    color: colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                  )
-                                : textTheme.bodyLarge,
-                          ),
-                          value: index,
-                          activeColor: colorScheme.primary,
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 8),
-                          dense: true,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                        // Keeps the selected background below the tile's ink effects.
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: RadioListTile<int>(
+                            title: Text(
+                              supportedLanguageNames[index],
+                              style: currentIndex == index
+                                  ? textTheme.bodyLarge?.copyWith(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    )
+                                  : textTheme.bodyLarge,
+                            ),
+                            value: index,
+                            activeColor: colorScheme.primary,
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 8),
+                            dense: true,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                         ),
                       );
