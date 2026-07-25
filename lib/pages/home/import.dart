@@ -32,5 +32,6 @@ export 'package:zephyr/pages/home/widgets/future_weather_band.dart';
 export 'package:zephyr/pages/home/widgets/rainfall_24h_view.dart';
 export 'package:zephyr/pages/home/widgets/warning_banner.dart';
 export 'package:zephyr/pages/home/widgets/weather_info_tile.dart';
+export 'package:zephyr/pages/home/widgets/weather_map.dart';
 export 'package:flutter/foundation.dart';
 export 'dart:math';

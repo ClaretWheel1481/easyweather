@@ -16,6 +16,8 @@ dependencies:
   shared_preferences:
   http:
   dynamic_color:
+  dio:
+  dio_cache_interceptor: 
   geolocator:
   geocoding:
   home_widget:
@@ -24,6 +26,11 @@ dependencies:
   android_battery_optimizations:
   animations:
   fl_chart:
+  flutter_map: 
+  flutter_map_cache: 
+  http_cache_file_store: 
+  latlong2: 
+  path_provider: 
   percent_indicator:
   flutter_colorpicker:
   json_annotation:

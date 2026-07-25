@@ -63,7 +63,6 @@ class _LayoutSettingsViewState extends State<LayoutSettingsView> {
   }
 
   IconData _getComponentIcon(String id) {
-    // TODO: Add more components
     switch (id) {
       case 'hourly_forecast':
         return Icons.access_time_rounded;
@@ -75,19 +74,21 @@ class _LayoutSettingsViewState extends State<LayoutSettingsView> {
         return Icons.psychology_rounded;
       case 'details':
         return Icons.info_outline_rounded;
+      case 'weather_map':
+        return Icons.map_rounded;
       default:
         return Icons.dashboard_customize_rounded;
     }
   }
 
   Map<String, String> _getComponentNames(BuildContext context) {
-    // TODO: Add more components
     return {
       'hourly_forecast': AppLocalizations.of(context).hourlyForecast,
       'rainfall_chart': AppLocalizations.of(context).precipitation,
       'daily_forecast': AppLocalizations.of(context).next7Days,
       'ai_advice': AppLocalizations.of(context).aiAdviceTitle,
       'details': AppLocalizations.of(context).detailedData,
+      'weather_map': AppLocalizations.of(context).weatherMap,
     };
   }
 
@@ -321,9 +322,7 @@ class _LayoutSettingsViewState extends State<LayoutSettingsView> {
                     },
                     onReorderItem: (int oldIndex, int newIndex) {
                       setState(() {
-                        if (oldIndex < newIndex) {
-                          newIndex -= 1;
-                        }
+                        // onReorderItem already adjusts newIndex after removal.
                         final LayoutComponent item =
                             _components.removeAt(oldIndex);
                         _components.insert(newIndex, item);

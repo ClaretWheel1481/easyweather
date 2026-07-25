@@ -47,6 +47,7 @@
   "windSpeed": "風速",
   "windDirection": "風向",
   "precipitation": "降水量",
+  "weatherMap": "天氣地圖",
   "hourlyForecast": "逐小時預報",
   "next7Days": "未來7天",
   "detailedData": "詳細數據",

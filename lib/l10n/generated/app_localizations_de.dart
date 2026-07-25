@@ -137,6 +137,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get precipitation => 'Niederschlag';
 
   @override
+  String get weatherMap => 'Wetterkarte';
+
+  @override
   String get hourlyForecast => 'Stündliche Vorhersage';
 
   @override

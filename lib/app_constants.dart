@@ -25,4 +25,12 @@ class AppConstants {
 
   // HealthCheck API Url 用于检查服务器是否正常
   static const String healthCheckUrl = '$weatherUrl/healthcheck';
+
+  // RainViewer API Url 用于获取最新雷达降雨图层
+  static const String rainViewerUrl =
+      'https://api.rainviewer.com/public/weather-maps.json';
+
+  // OpenStreetMap Url 地图PNG链接
+  static const String openStreetMapTileUrl =
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 }

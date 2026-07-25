@@ -3,11 +3,11 @@ import '../import.dart';
 class LayoutService {
   static const String _layoutKey = 'home_layout';
 
-  // TODO: Add more components
   static final List<String> layout = [
     'ai_advice',
     'hourly_forecast',
     'rainfall_chart',
+    'weather_map',
     'daily_forecast',
     'details',
   ];

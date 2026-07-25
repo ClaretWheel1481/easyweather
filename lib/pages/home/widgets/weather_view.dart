@@ -185,6 +185,8 @@ class _WeatherViewState extends State<WeatherView>
         return _buildAiAdviceWidget(context);
       case 'details':
         return _buildDetailsWidget(context);
+      case 'weather_map':
+        return _buildWeatherMap(context);
       default:
         return const SizedBox.shrink();
     }
@@ -432,6 +434,18 @@ class _WeatherViewState extends State<WeatherView>
       children: [
         Rainfall24hView(hourly: widget.weather.hourly),
         const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildWeatherMap(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(AppLocalizations.of(context).weatherMap),
+        const SizedBox(height: 8),
+        WeatherMap(city: widget.city),
+        const SizedBox(height: 20),
       ],
     );
   }

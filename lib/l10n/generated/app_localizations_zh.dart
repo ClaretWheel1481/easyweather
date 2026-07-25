@@ -137,6 +137,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get precipitation => '降水量';
 
   @override
+  String get weatherMap => '天气地图';
+
+  @override
   String get hourlyForecast => '逐小时预报';
 
   @override
@@ -463,6 +466,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get precipitation => '降水量';
+
+  @override
+  String get weatherMap => '天氣地圖';
 
   @override
   String get hourlyForecast => '逐小時預報';

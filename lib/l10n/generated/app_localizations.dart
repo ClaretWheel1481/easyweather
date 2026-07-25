@@ -356,6 +356,12 @@ abstract class AppLocalizations {
   /// **'Precipitation'**
   String get precipitation;
 
+  /// No description provided for @weatherMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Weather Map'**
+  String get weatherMap;
+
   /// No description provided for @hourlyForecast.
   ///
   /// In en, this message translates to:

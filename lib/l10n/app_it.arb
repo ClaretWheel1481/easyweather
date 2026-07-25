@@ -49,6 +49,7 @@
   "windSpeed": "Vento",
   "windDirection": "Direzione",
   "precipitation": "Precip.",
+  "weatherMap": "Mappa meteo",
   "hourlyForecast": "Previsioni Orarie",
   "next7Days": "Prossimi 7 Giorni",
   "detailedData": "Dati Dettagliati",
