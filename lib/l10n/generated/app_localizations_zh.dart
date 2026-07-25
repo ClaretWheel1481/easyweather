@@ -137,7 +137,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get precipitation => '降水量';
 
   @override
+  String get precipitationIntensity => '降水强度';
+
+  @override
   String get weatherMap => '天气地图';
+
+  @override
+  String get mapZoomIn => '放大';
+
+  @override
+  String get mapZoomOut => '缩小';
 
   @override
   String get hourlyForecast => '逐小时预报';
@@ -468,7 +477,16 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get precipitation => '降水量';
 
   @override
+  String get precipitationIntensity => '降水強度';
+
+  @override
   String get weatherMap => '天氣地圖';
+
+  @override
+  String get mapZoomIn => '放大';
+
+  @override
+  String get mapZoomOut => '縮小';
 
   @override
   String get hourlyForecast => '逐小時預報';

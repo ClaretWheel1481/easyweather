@@ -7,9 +7,9 @@ class LayoutService {
     'ai_advice',
     'hourly_forecast',
     'rainfall_chart',
+    'weather_map',
     'daily_forecast',
     'details',
-    'weather_map',
   ];
 
   Future<List<String>> getLayout() async {

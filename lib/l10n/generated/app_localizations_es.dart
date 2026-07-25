@@ -137,7 +137,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get precipitation => 'Precipitación';
 
   @override
+  String get precipitationIntensity => 'Intensidad de precipitación';
+
+  @override
   String get weatherMap => 'Mapa meteorológico';
+
+  @override
+  String get mapZoomIn => 'Acercar';
+
+  @override
+  String get mapZoomOut => 'Alejar';
 
   @override
   String get hourlyForecast => 'Pronóstico Horario';

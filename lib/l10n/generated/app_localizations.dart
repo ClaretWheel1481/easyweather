@@ -356,11 +356,29 @@ abstract class AppLocalizations {
   /// **'Precipitation'**
   String get precipitation;
 
+  /// No description provided for @precipitationIntensity.
+  ///
+  /// In en, this message translates to:
+  /// **'Precipitation Intensity'**
+  String get precipitationIntensity;
+
   /// No description provided for @weatherMap.
   ///
   /// In en, this message translates to:
   /// **'Weather Map'**
   String get weatherMap;
+
+  /// No description provided for @mapZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get mapZoomIn;
+
+  /// No description provided for @mapZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get mapZoomOut;
 
   /// No description provided for @hourlyForecast.
   ///

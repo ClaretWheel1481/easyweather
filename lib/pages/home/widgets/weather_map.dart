@@ -85,6 +85,72 @@ class WeatherMapFullPage extends StatelessWidget {
   }
 }
 
+class _RainViewerLegend extends StatelessWidget {
+  const _RainViewerLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Material(
+      color: Colors.black54,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '${l10n.precipitationIntensity} · dBZ',
+              style: const TextStyle(color: Colors.white, fontSize: 10),
+            ),
+            const SizedBox(height: 3),
+            const SizedBox(
+              width: 180,
+              height: 10,
+              child: DecoratedBox(
+                // Matches RainViewer's Universal Blue color scheme (ID 2).
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.all(Radius.circular(2)),
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF005A00),
+                      Color(0xFF88DDEE),
+                      Color(0xFF00A3E0),
+                      Color(0xFFFFEE00),
+                      Color(0xFFFF4400),
+                      Color(0xFFFFAAFF),
+                      Color(0xFFFFFFFF),
+                    ],
+                    stops: [0, 0.23, 0.31, 0.54, 0.69, 0.85, 1],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            const SizedBox(
+              width: 180,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('0', style: TextStyle(color: Colors.white, fontSize: 9)),
+                  Text('20',
+                      style: TextStyle(color: Colors.white, fontSize: 9)),
+                  Text('35',
+                      style: TextStyle(color: Colors.white, fontSize: 9)),
+                  Text('45',
+                      style: TextStyle(color: Colors.white, fontSize: 9)),
+                  Text('55+',
+                      style: TextStyle(color: Colors.white, fontSize: 9)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _WeatherMapContent extends StatefulWidget {
   final City city;
   final bool interactive;
@@ -100,14 +166,14 @@ class _WeatherMapContent extends StatefulWidget {
 }
 
 class _WeatherMapContentState extends State<_WeatherMapContent> {
-  static const _fullMapMinZoom = 3.0;
-  static const _fullMapMaxZoom = 12.0;
+  static const _fullMapMinZoom = 4.0;
+  static const _fullMapMaxZoom = 10.0;
   late final Future<String?> _radarTileTemplate;
   late final Future<CacheStore> _tileCacheStore;
   late final MapController _mapController;
   Dio? _tileDio;
   CachedTileProvider? _tileProvider;
-  double _zoom = 7;
+  double _zoom = 6;
 
   @override
   void initState() {
@@ -233,7 +299,7 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
                         child: Column(
                           children: [
                             IconButton(
-                              tooltip: 'Zoom in',
+                              tooltip: AppLocalizations.of(context).mapZoomIn,
                               onPressed: _zoom >= _fullMapMaxZoom
                                   ? null
                                   : () => _setZoom(_zoom + 1),
@@ -253,7 +319,7 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
                               ),
                             ),
                             IconButton(
-                              tooltip: 'Zoom out',
+                              tooltip: AppLocalizations.of(context).mapZoomOut,
                               onPressed: _zoom <= _fullMapMinZoom
                                   ? null
                                   : () => _setZoom(_zoom - 1),
@@ -263,6 +329,12 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
                         ),
                       ),
                     ),
+                  ),
+                if (widget.interactive && snapshot.data != null)
+                  Positioned(
+                    right: 8,
+                    bottom: 32,
+                    child: _RainViewerLegend(),
                   ),
                 Positioned(
                   left: 8,
