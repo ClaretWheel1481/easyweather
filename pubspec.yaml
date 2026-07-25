@@ -14,7 +14,6 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   shared_preferences:
-  http:
   dynamic_color:
   dio:
   dio_cache_interceptor: 

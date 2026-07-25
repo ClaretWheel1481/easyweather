@@ -1,11 +1,12 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zephyr/app_constants.dart';
 import 'package:zephyr/core/services/weather_cache.dart';
 
 class RainViewerService {
+  static final Dio _dio = Dio();
   static const _tileTemplateKey = 'rainviewer_tile_template';
   static const _tileTemplateTimestampKey = 'rainviewer_tile_template_ts';
 
@@ -22,12 +23,18 @@ class RainViewerService {
     }
 
     try {
-      final response = await http
-          .get(Uri.parse(AppConstants.rainViewerUrl))
+      final response = await _dio
+          .getUri<String>(
+            Uri.parse(AppConstants.rainViewerUrl),
+            options: Options(
+              responseType: ResponseType.plain,
+              validateStatus: (_) => true,
+            ),
+          )
           .timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return null;
 
-      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      final payload = jsonDecode(response.data!) as Map<String, dynamic>;
       final host = payload['host'];
       final frames = (payload['radar'] as Map<String, dynamic>?)?['past'];
       if (host is! String || frames is! List || frames.isEmpty) return null;

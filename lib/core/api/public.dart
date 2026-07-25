@@ -1,7 +1,26 @@
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import '../import.dart';
 
 class Api {
+  static final Dio _dio = Dio();
+
+  // Keeps the previous plain-text response handling and total request timeout.
+  static Future<Response<String>> _get(
+    Uri url, {
+    Map<String, dynamic>? headers,
+  }) {
+    return _dio
+        .getUri<String>(
+          url,
+          options: Options(
+            headers: headers,
+            responseType: ResponseType.plain,
+            validateStatus: (_) => true,
+          ),
+        )
+        .timeout(const Duration(seconds: 8));
+  }
+
   static String _getApiLang([String defaultLang = 'en-US']) {
     final localeKey = appLanguages
         .firstWhere((l) => l.code == localeCodeNotifier.value,
@@ -38,9 +57,9 @@ class Api {
       final url = Uri.parse(
         '${AppConstants.alertUrl}?location=$lon,$lat&lang=$lang',
       );
-      final response = await http.get(url).timeout(const Duration(seconds: 8));
+      final response = await _get(url);
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.data!);
         kDebugMode ? debugPrint('Weather Alert response: $data') : null;
         if (data is Map<String, dynamic> && data['code'] == '200') {
           final List warnings = data['warning'] ?? [];
@@ -71,15 +90,15 @@ class Api {
           '&source=$ws'
           '&unit=$unitParam');
 
-      final response = await http.get(url).timeout(const Duration(seconds: 8));
+      final response = await _get(url);
       if (response.statusCode == 200) {
         kDebugMode
-            ? debugPrint('Weather API response: ${response.body}')
+            ? debugPrint('Weather API response: ${response.data}')
             : null;
-        return WeatherData.fromJson(json.decode(response.body));
+        return WeatherData.fromJson(json.decode(response.data!));
       } else {
         kDebugMode
-            ? debugPrint('Weather API fetch error: ${response.body}')
+            ? debugPrint('Weather API fetch error: ${response.data}')
             : null;
       }
     } catch (e) {
@@ -95,9 +114,9 @@ class Api {
       final ws = await _getWeatherSource();
       final url = Uri.parse(
           '${AppConstants.searchUrl}?query=$query&accept-language=$lang&source=$ws');
-      final response = await http.get(url).timeout(const Duration(seconds: 8));
+      final response = await _get(url);
       if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
+        final List data = json.decode(response.data!);
         return data
             .map((item) {
               final address = item['address'] ?? {};
@@ -130,9 +149,7 @@ class Api {
         'Application': 'Zephyr',
         'User-Agent': 'Zephyr/${AppConstants.appVersion}'
       };
-      final response = await http
-          .get(url, headers: sendHeaders)
-          .timeout(const Duration(seconds: 8));
+      final response = await _get(url, headers: sendHeaders);
       if (response.statusCode == 200) {
         return true;
       }

@@ -1,7 +1,8 @@
-﻿import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import '../import.dart';
 
 class AIAdvisorService {
+  static final Dio _dio = Dio();
   static const String _aiConfigKey = 'ai_config';
   static const String _adviceCacheKey = 'ai_advice_cache_';
   static const Duration _cacheDuration = Duration(hours: 2);
@@ -143,7 +144,7 @@ class AIAdvisorService {
       final response = await _sendRequest(systemPrompt, weatherPrompt, config);
 
       if (response.statusCode == 200) {
-        final advice = _parseAIResponse(response.body, cityName);
+        final advice = _parseAIResponse(response.data ?? '', cityName);
         if (advice != null) {
           // 请求成功后写回缓存
           await _cacheAdvice(cityName, weather, warnings, advice);
@@ -159,7 +160,7 @@ class AIAdvisorService {
   }
 
   // 发送 AI 请求：根据 provider 组装 Header 与请求体
-  static Future<http.Response> _sendRequest(
+  static Future<Response<String>> _sendRequest(
     String systemPrompt,
     String weatherPrompt,
     AIConfig config,
@@ -200,10 +201,14 @@ class AIAdvisorService {
       provider,
     );
 
-    return await http.post(
+    return _dio.postUri<String>(
       Uri.parse(endpoint),
-      headers: headers,
-      body: jsonEncode(body),
+      data: jsonEncode(body),
+      options: Options(
+        headers: headers,
+        responseType: ResponseType.plain,
+        validateStatus: (_) => true,
+      ),
     );
   }
 
