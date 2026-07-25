@@ -3,7 +3,7 @@ description: zephyr by claret
 
 publish_to: "none"
 
-version: 2.2.4+1
+version: 2.2.5+1
 
 environment:
   sdk: ">=3.0.3 <4.0.0"
