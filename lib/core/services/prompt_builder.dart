@@ -48,18 +48,13 @@ Return valid JSON only, with no Markdown fence or other text: {"suggestion":"...
               time.add(const Duration(hours: 1)).isAfter(now);
         })
         .take(6)
-        .map((hour) {
-          return _compactWeatherJson(hour.toJson(), hour.weatherCode);
-        })
+        .map((hour) => _compactWeatherJson(hour.toJson(), hour.weatherCode))
         .toList();
     final weatherContext = <String, dynamic>{
       'city': cityName,
       'temperature_unit': '°${tempUnitNotifier.value}',
       if (current != null)
-        'current': _compactWeatherJson(
-          current.toJson(),
-          current.weatherCode,
-        ),
+        'current': _compactWeatherJson(current.toJson(), current.weatherCode),
       if (today != null)
         'today': _compactWeatherJson(today.toJson(), today.weatherCode),
       if (upcomingHours.isNotEmpty) 'next_6_hours': upcomingHours,

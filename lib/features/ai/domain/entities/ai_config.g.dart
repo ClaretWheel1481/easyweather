@@ -7,6 +7,7 @@ part of 'ai_config.dart';
 // **************************************************************************
 
 AIConfig _$AIConfigFromJson(Map<String, dynamic> json) => AIConfig(
+      id: json['id'] as String? ?? '',
       provider: json['provider'] as String,
       providerName: json['providerName'] as String?,
       apiKey: json['apiKey'] as String,
@@ -20,6 +21,7 @@ AIConfig _$AIConfigFromJson(Map<String, dynamic> json) => AIConfig(
     );
 
 Map<String, dynamic> _$AIConfigToJson(AIConfig instance) => <String, dynamic>{
+      'id': instance.id,
       'provider': instance.provider,
       'providerName': instance.providerName,
       'apiKey': instance.apiKey,

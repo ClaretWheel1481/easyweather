@@ -7,6 +7,7 @@ export 'package:shared_preferences/shared_preferences.dart';
 export 'package:zephyr/pages/settings/layout_settings_view.dart';
 export 'l10n/generated/app_localizations.dart';
 export 'core/notifiers.dart';
+export 'core/dependency_injection/app_dependencies.dart';
 export 'pages/home/view.dart';
 export 'pages/search/view.dart';
 export 'pages/settings/view.dart';

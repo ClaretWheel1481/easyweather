@@ -23,9 +23,9 @@ WeatherData _$WeatherDataFromJson(Map<String, dynamic> json) => WeatherData(
 
 Map<String, dynamic> _$WeatherDataToJson(WeatherData instance) =>
     <String, dynamic>{
-      'current': instance.current,
-      'hourly': instance.hourly,
-      'daily': instance.daily,
+      'current': instance.current?.toJson(),
+      'hourly': instance.hourly.map((e) => e.toJson()).toList(),
+      'daily': instance.daily.map((e) => e.toJson()).toList(),
       'lastUpdated': instance.lastUpdated?.toIso8601String(),
     };
 

@@ -1,5 +1,3 @@
-import 'package:zephyr/core/services/forecast_widget_service.dart';
-
 import '../import.dart';
 
 class WeatherFetchService {
@@ -9,42 +7,22 @@ class WeatherFetchService {
     try {
       if (kDebugMode) debugPrint('获取城市天气: ${city.name}');
 
-      final prefs = await SharedPreferences.getInstance();
-
-      final weather = await Api.fetchWeather(
-        latitude: city.lat,
-        longitude: city.lon,
-        units: tempUnitNotifier.value,
-      );
-
-      List<WeatherWarning> warnings = [];
-      try {
-        warnings = await Api.fetchWarning(
-          lat: city.lat,
-          lon: city.lon,
-        );
+      final snapshot =
+          await AppDependencies.weatherRepository.fetchWeather(city);
+      if (snapshot != null) {
+        final weather = snapshot.weather;
+        final warnings = snapshot.warnings;
         await NotificationService().showWarningNotifications(warnings);
-      } catch (e) {
-        if (kDebugMode) debugPrint('获取天气预警失败: $e');
-      }
-
-      if (weather != null) {
-        final timestamp = DateTime.now();
-        await cacheWeather(city, weather, warnings, timestamp);
-        weather.lastUpdated = timestamp;
         if (kDebugMode) debugPrint('天气数据获取并缓存成功 for ${city.name}');
 
-        final citiesStr = prefs.getString('cities');
-        if (citiesStr != null) {
-          final cities = City.listFromJson(citiesStr);
-          if (cities.isNotEmpty &&
-              cities.first.lat == city.lat &&
-              cities.first.lon == city.lon) {
-            await ForecastWidgetService.updateAllWidgets(
-              city: city,
-              weatherData: weather,
-            );
-          }
+        final cities = await AppDependencies.cityRepository.loadCities();
+        if (cities.isNotEmpty &&
+            cities.first.lat == city.lat &&
+            cities.first.lon == city.lon) {
+          await ForecastWidgetService.updateAllWidgets(
+            city: city,
+            weatherData: weather,
+          );
         }
 
         return {'weather': weather, 'warnings': warnings};
@@ -68,14 +46,7 @@ class WeatherFetchService {
     try {
       if (kDebugMode) debugPrint('后台任务开始获取天气数据...');
 
-      final prefs = await SharedPreferences.getInstance();
-      final citiesStr = prefs.getString('cities');
-      if (citiesStr == null) {
-        if (kDebugMode) debugPrint('后台任务: 没有配置城市信息');
-        return;
-      }
-
-      final cities = City.listFromJson(citiesStr);
+      final cities = await AppDependencies.cityRepository.loadCities();
       if (cities.isEmpty) {
         if (kDebugMode) debugPrint('后台任务: 城市列表为空');
         return;

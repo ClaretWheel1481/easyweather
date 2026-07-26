@@ -20,7 +20,7 @@ class _HomePageState extends State<HomePage> {
   PageController? _pageController;
   final ValueNotifier<bool> _isFabVisibleNotifier = ValueNotifier(true);
 
-  String _getMapKey(City city) {
+  String _weatherMapKey(City city) {
     return '${city.lat}_${city.lon}_${weatherSourceNotifier.value}';
   }
 
@@ -67,20 +67,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadCities() async {
-    final prefs = await SharedPreferences.getInstance();
-    final citiesStr = prefs.getString('cities');
-    final mainIndex = prefs.getInt('main_city_index') ?? 0;
-    List<City> list = [];
-    int idx = 0;
-    if (citiesStr != null) {
-      list = City.listFromJson(citiesStr);
-      idx = mainIndex < list.length ? mainIndex : 0;
-      if (list.isNotEmpty && idx != 0) {
-        final mainCity = list.removeAt(idx);
-        list.insert(0, mainCity);
-        idx = 0;
-      }
-    }
+    final list = await AppDependencies.loadSavedCities();
+    var idx = 0;
     if (!mounted) return;
 
     if (list.isNotEmpty && idx >= list.length) {
@@ -101,7 +89,7 @@ class _HomePageState extends State<HomePage> {
 
     if (cities.isNotEmpty) {
       final mainCity = cities.first;
-      final weather = weatherMap[_getMapKey(mainCity)];
+      final weather = weatherMap[_weatherMapKey(mainCity)];
       if (weather != null) {
         await ForecastWidgetService.updateAllWidgets(
           city: mainCity,
@@ -114,27 +102,27 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadWeather(City city, {bool force = false}) async {
     if (!mounted) return;
     setState(() {
-      loadingMap[_getMapKey(city)] = true;
+      loadingMap[_weatherMapKey(city)] = true;
     });
-    Map<String, dynamic>? cached;
-    if (!force) {
-      cached = await loadCachedWeather(city);
-    }
-    if (cached != null) {
+    final snapshot =
+        await AppDependencies.loadWeather(city, forceRefresh: force);
+    if (snapshot != null) {
       setState(() {
-        weatherMap[_getMapKey(city)] = cached!['weather'];
-        warningsMap[_getMapKey(city)] = cached['warnings'];
-        loadingMap[_getMapKey(city)] = false;
+        weatherMap[_weatherMapKey(city)] = snapshot.weather;
+        warningsMap[_weatherMapKey(city)] = snapshot.warnings;
+        loadingMap[_weatherMapKey(city)] = false;
       });
-    } else {
-      await _refreshWeather(city);
     }
   }
 
   Future<void> _refreshWeather(City city) async {
-    Map<String, dynamic>? data;
+    WeatherData? weather;
+    List<WeatherWarning> warnings = [];
     try {
-      data = await WeatherFetchService.getFreshWeatherData(city);
+      final snapshot =
+          await AppDependencies.loadWeather(city, forceRefresh: true);
+      weather = snapshot?.weather;
+      warnings = snapshot?.warnings ?? [];
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Failed to refresh weather: $e');
@@ -143,9 +131,9 @@ class _HomePageState extends State<HomePage> {
 
     if (!mounted) return;
     setState(() {
-      weatherMap[_getMapKey(city)] = data?['weather'];
-      warningsMap[_getMapKey(city)] = data?['warnings'] ?? [];
-      loadingMap[_getMapKey(city)] = false;
+      weatherMap[_weatherMapKey(city)] = weather;
+      warningsMap[_weatherMapKey(city)] = warnings;
+      loadingMap[_weatherMapKey(city)] = false;
     });
   }
 
@@ -161,21 +149,11 @@ class _HomePageState extends State<HomePage> {
   Future<void> _onAddCity() async {
     final result = await Navigator.pushNamed(context, '/search');
     if (result is City) {
-      final prefs = await SharedPreferences.getInstance();
-      final citiesStr = prefs.getString('cities');
-      List<City> list = citiesStr != null ? City.listFromJson(citiesStr) : [];
-      if (!list.any((c) => c.lat == result.lat && c.lon == result.lon)) {
-        list.add(result);
-        await prefs.setString('cities', City.listToJson(list));
-      }
-
+      await AppDependencies.saveCity(result);
       await _loadCities();
-
-      final citiesStr2 = prefs.getString('cities');
-      List<City> list2 =
-          citiesStr2 != null ? City.listFromJson(citiesStr2) : [];
-      int newIdx =
-          list2.indexWhere((c) => c.lat == result.lat && c.lon == result.lon);
+      final newIdx = cities.indexWhere(
+        (city) => city.lat == result.lat && city.lon == result.lon,
+      );
 
       if (newIdx >= 0 && newIdx < cities.length) {
         setState(() {
@@ -240,18 +218,13 @@ class _HomePageState extends State<HomePage> {
       );
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    final citiesStr = prefs.getString('cities');
-    List<City> list = citiesStr != null ? City.listFromJson(citiesStr) : [];
+    final list = await AppDependencies.cityRepository.loadCities();
     if (!list.any((c) => c.lat == city.lat && c.lon == city.lon)) {
-      list.add(city);
-      await prefs.setString('cities', City.listToJson(list));
+      await AppDependencies.saveCity(city);
       await _loadCities();
-      final citiesStr2 = prefs.getString('cities');
-      List<City> list2 =
-          citiesStr2 != null ? City.listFromJson(citiesStr2) : [];
-      int newIdx =
-          list2.indexWhere((c) => c.lat == city.lat && c.lon == city.lon);
+      final newIdx = cities.indexWhere(
+        (item) => item.lat == city.lat && item.lon == city.lon,
+      );
       if (newIdx >= 0 && newIdx < cities.length) {
         setState(() {
           pageIndex = newIdx;
@@ -296,7 +269,7 @@ class _HomePageState extends State<HomePage> {
         ? cities[pageIndex]
         : null;
     final currentWeather =
-        currentCity != null ? weatherMap[_getMapKey(currentCity)] : null;
+        currentCity != null ? weatherMap[_weatherMapKey(currentCity)] : null;
     final weatherCode = currentWeather?.current?.weatherCode;
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -357,9 +330,9 @@ class _HomePageState extends State<HomePage> {
                     onPageChanged: _onPageChanged,
                     itemBuilder: (context, idx) {
                       final city = cities[idx];
-                      final weather = weatherMap[_getMapKey(city)];
-                      final warnings = warningsMap[_getMapKey(city)] ?? [];
-                      final loading = loadingMap[_getMapKey(city)] ?? true;
+                      final weather = weatherMap[_weatherMapKey(city)];
+                      final warnings = warningsMap[_weatherMapKey(city)] ?? [];
+                      final loading = loadingMap[_weatherMapKey(city)] ?? true;
 
                       return HomePageContentWidget(
                         city: city,

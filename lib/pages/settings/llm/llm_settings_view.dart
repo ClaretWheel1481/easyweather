@@ -1,46 +1,6 @@
 import 'dart:convert';
 import '../import.dart';
 
-// 本地配置模型，用于UI列表管理
-class LLMProviderConfig {
-  String id;
-  String name;
-  String endpointType;
-  String apiKey;
-  String endpoint;
-  String model;
-
-  LLMProviderConfig({
-    required this.id,
-    required this.name,
-    required this.endpointType,
-    this.apiKey = '',
-    this.endpoint = '',
-    this.model = '',
-  });
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'endpointType': endpointType,
-        'apiKey': apiKey,
-        'endpoint': endpoint,
-        'model': model,
-      };
-
-  factory LLMProviderConfig.fromJson(Map<String, dynamic> json) {
-    return LLMProviderConfig(
-      id: json['id'],
-      name: json['name'],
-      endpointType: AIProviderTemplates.resolveEndpointType(
-          json['endpointType'] ?? AIProviderTemplates.openAICompatible),
-      apiKey: json['apiKey'] ?? '',
-      endpoint: json['endpoint'] ?? '',
-      model: json['model'] ?? '',
-    );
-  }
-}
-
 class LLMSettingsPage extends StatefulWidget {
   const LLMSettingsPage({super.key});
 
@@ -50,7 +10,7 @@ class LLMSettingsPage extends StatefulWidget {
 
 class _LLMSettingsPageState extends State<LLMSettingsPage> {
   // 已配置的Provider列表
-  List<LLMProviderConfig> _providers = [];
+  List<AIConfig> _providers = [];
   // 当前选中的Provider ID (用于编辑和激活)
   String? _selectedProviderId;
 
@@ -60,6 +20,24 @@ class _LLMSettingsPageState extends State<LLMSettingsPage> {
 
   bool _loading = true;
   bool _isTesting = false;
+
+  // Converts the previous provider-list schema before it is rewritten by AIConfig.
+  AIConfig _decodeProvider(Map<String, dynamic> json) {
+    if (json.containsKey('provider')) {
+      return AIConfig.fromJson(json);
+    }
+
+    return AIConfig.fromJson({
+      'id': json['id'],
+      'providerName': json['name'],
+      'provider': AIProviderTemplates.resolveEndpointType(
+        json['endpointType'] ?? AIProviderTemplates.openAICompatible,
+      ),
+      'apiKey': json['apiKey'] ?? '',
+      'customEndpoint': json['endpoint'] ?? '',
+      'model': json['model'] ?? '',
+    });
+  }
 
   @override
   void initState() {
@@ -77,14 +55,15 @@ class _LLMSettingsPageState extends State<LLMSettingsPage> {
 
   // 加载数据
   Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-
     // 1. 加载保存的Provider列表
-    final providersJson = prefs.getString('llm_configured_providers');
+    final providersJson =
+        await AppDependencies.appPreferences.loadLlmProviders();
     if (providersJson != null) {
       try {
         final List<dynamic> list = jsonDecode(providersJson);
-        _providers = list.map((e) => LLMProviderConfig.fromJson(e)).toList();
+        _providers = list
+            .map((item) => _decodeProvider(item as Map<String, dynamic>))
+            .toList();
       } catch (e) {
         debugPrint('Failed to load providers: $e');
       }
@@ -97,14 +76,12 @@ class _LLMSettingsPageState extends State<LLMSettingsPage> {
     if (_providers.isEmpty &&
         activeConfig != null &&
         activeConfig.apiKey.isNotEmpty) {
-      final migratedProvider = LLMProviderConfig(
+      final migratedProvider = activeConfig.copyWith(
         id: 'migrated_${DateTime.now().millisecondsSinceEpoch}',
-        name: 'Default (${activeConfig.provider})',
-        endpointType:
+        providerName:
+            activeConfig.providerName ?? 'Default (${activeConfig.provider})',
+        provider:
             AIProviderTemplates.resolveEndpointType(activeConfig.provider),
-        apiKey: activeConfig.apiKey,
-        endpoint: activeConfig.customEndpoint,
-        model: activeConfig.model,
       );
       _providers.add(migratedProvider);
       _selectedProviderId = migratedProvider.id;
@@ -139,7 +116,7 @@ class _LLMSettingsPageState extends State<LLMSettingsPage> {
         orElse: () => _providers.first);
 
     _apiKeyController.text = provider.apiKey;
-    _endpointController.text = provider.endpoint;
+    _endpointController.text = provider.customEndpoint;
     _modelController.text = provider.model;
   }
 
@@ -149,17 +126,18 @@ class _LLMSettingsPageState extends State<LLMSettingsPage> {
 
     final index = _providers.indexWhere((p) => p.id == _selectedProviderId);
     if (index != -1) {
-      _providers[index].apiKey = _apiKeyController.text;
-      _providers[index].endpoint = _endpointController.text;
-      _providers[index].model = _modelController.text;
+      _providers[index] = _providers[index].copyWith(
+        apiKey: _apiKeyController.text,
+        customEndpoint: _endpointController.text,
+        model: _modelController.text,
+      );
     }
   }
 
   // 持久化列表到磁盘
   Future<void> _saveProvidersList() async {
-    final prefs = await SharedPreferences.getInstance();
     final jsonList = _providers.map((e) => e.toJson()).toList();
-    await prefs.setString('llm_configured_providers', jsonEncode(jsonList));
+    await AppDependencies.appPreferences.saveLlmProviders(jsonEncode(jsonList));
   }
 
   // 切换选中
@@ -238,11 +216,12 @@ class _LLMSettingsPageState extends State<LLMSettingsPage> {
     final endpoint = AIProviderTemplates.getTemplate(endpointType);
     final newId = DateTime.now().millisecondsSinceEpoch.toString();
 
-    final newProvider = LLMProviderConfig(
+    final newProvider = AIConfig(
       id: newId,
-      name: name,
-      endpointType: endpointType,
-      endpoint: endpoint.baseUrl, // 预填默认Endpoint
+      providerName: name,
+      provider: endpointType,
+      apiKey: '',
+      customEndpoint: endpoint.baseUrl, // 预填默认Endpoint
       model: endpoint.defaultModel, // 预填默认Model
     );
 
@@ -291,9 +270,9 @@ class _LLMSettingsPageState extends State<LLMSettingsPage> {
     final enabled = existingConfig?.enabled ?? true;
 
     final newConfig = AIConfig(
-      provider: provider.endpointType,
+      provider: provider.provider,
       apiKey: provider.apiKey,
-      customEndpoint: provider.endpoint,
+      customEndpoint: provider.customEndpoint,
       model: provider.model,
       enabled: enabled,
       customHeaders: existingConfig?.customHeaders ?? {},
@@ -381,10 +360,9 @@ class _LLMSettingsPageState extends State<LLMSettingsPage> {
                         return Material(
                           type: MaterialType.transparency,
                           child: RadioListTile<String>(
-                            title: Text(p.name),
+                            title: Text(p.providerName ?? p.provider),
                             subtitle: Text(
-                              AIProviderTemplates.getTemplate(p.endpointType)
-                                  .label,
+                              AIProviderTemplates.getTemplate(p.provider).label,
                               style: textTheme.bodySmall,
                             ),
                             value: p.id,

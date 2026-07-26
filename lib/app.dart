@@ -19,13 +19,13 @@ class _ZephyrAppState extends State<ZephyrApp> {
   }
 
   Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    final themeModeIndex = prefs.getInt('theme_mode') ?? 0;
+    final preferences = AppDependencies.appPreferences;
+    final themeModeIndex = await preferences.loadThemeModeIndex();
     themeModeNotifier.value = ThemeMode.values[themeModeIndex];
-    final dynamicColorEnabled = prefs.getBool('dynamic_color_enabled') ?? false;
+    final dynamicColorEnabled = await preferences.loadDynamicColorEnabled();
     dynamicColorEnabledNotifier.value = dynamicColorEnabled;
     final customColorValue =
-        prefs.getInt('custom_color') ?? Colors.blue.toARGB32();
+        await preferences.loadCustomColor() ?? Colors.blue.toARGB32();
     customColorNotifier.value = Color(customColorValue);
   }
 

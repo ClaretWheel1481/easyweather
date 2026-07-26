@@ -32,17 +32,21 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-
+    final preferences = AppDependencies.appPreferences;
     final aiConfig = await AIAdvisorService.getConfig();
+    final themeModeIndex = await preferences.loadThemeModeIndex();
+    final temperatureUnit = await preferences.loadTemperatureUnit();
+    final weatherSource = await preferences.loadWeatherSource();
+    final dynamicColorEnabled = await preferences.loadDynamicColorEnabled();
+    final customColorValue =
+        await preferences.loadCustomColor() ?? Colors.blue.toARGB32();
+    if (!mounted) return;
 
     setState(() {
-      _themeMode = ThemeMode.values[prefs.getInt('theme_mode') ?? 0];
-      _tempUnit = prefs.getString('temp_unit') ?? 'C';
-      _weatherSource = prefs.getString('weather_source') ?? 'OpenMeteo';
-      _dynamicColorEnabled = prefs.getBool('dynamic_color_enabled') ?? false;
-      final customColorValue =
-          prefs.getInt('custom_color') ?? Colors.blue.toARGB32();
+      _themeMode = ThemeMode.values[themeModeIndex];
+      _tempUnit = temperatureUnit;
+      _weatherSource = weatherSource;
+      _dynamicColorEnabled = dynamicColorEnabled;
       _customColor = Color(customColorValue);
 
       _llmEnabled = aiConfig?.enabled ?? true;
@@ -55,28 +59,19 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadCities() async {
-    final prefs = await SharedPreferences.getInstance();
-    final citiesStr = prefs.getString('cities');
-    final mainIndex = prefs.getInt('main_city_index') ?? 0;
-    if (citiesStr != null) {
-      setState(() {
-        _cities = City.listFromJson(citiesStr);
-        _mainCityIndex = mainIndex < _cities.length ? mainIndex : 0;
-        _cityLoading = false;
-      });
-    } else {
-      setState(() {
-        _cities = [];
-        _mainCityIndex = 0;
-        _cityLoading = false;
-      });
-    }
+    final cities = await AppDependencies.cityRepository.loadCities();
+    final mainIndex = await AppDependencies.cityRepository.loadMainCityIndex();
+    if (!mounted) return;
+    setState(() {
+      _cities = cities;
+      _mainCityIndex = mainIndex < cities.length ? mainIndex : 0;
+      _cityLoading = false;
+    });
   }
 
   Future<void> _saveCities() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('cities', City.listToJson(_cities));
-    await prefs.setInt('main_city_index', _mainCityIndex);
+    await AppDependencies.cityRepository.saveCities(_cities);
+    await AppDependencies.cityRepository.saveMainCityIndex(_mainCityIndex);
   }
 
   void _removeCity(int index) async {
@@ -123,8 +118,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveThemeMode(ThemeMode mode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('theme_mode', mode.index);
+    await AppDependencies.appPreferences.saveThemeModeIndex(mode.index);
     setState(() {
       _themeMode = mode;
     });
@@ -132,8 +126,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveTempUnit(String unit) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('temp_unit', unit);
+    await AppDependencies.appPreferences.saveTemperatureUnit(unit);
     setState(() {
       _tempUnit = unit;
     });
@@ -141,8 +134,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveWeatherSources(String name) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('weather_source', name);
+    await AppDependencies.appPreferences.saveWeatherSource(name);
     setState(() {
       _weatherSource = name;
     });
@@ -150,8 +142,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveDynamicColorEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('dynamic_color_enabled', enabled);
+    await AppDependencies.appPreferences.saveDynamicColorEnabled(enabled);
     setState(() {
       _dynamicColorEnabled = enabled;
     });
@@ -159,8 +150,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveCustomColor(Color color) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('custom_color', color.toARGB32());
+    await AppDependencies.appPreferences.saveCustomColor(color.toARGB32());
     setState(() {
       _customColor = color;
     });

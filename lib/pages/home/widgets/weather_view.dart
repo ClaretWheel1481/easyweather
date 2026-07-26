@@ -1,8 +1,8 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:intl/intl.dart';
-import 'package:zephyr/core/models/ai_advice.dart';
-import 'package:zephyr/core/models/ai_config.dart';
+import 'package:zephyr/features/ai/domain/entities/ai_advice.dart';
+import 'package:zephyr/features/ai/domain/entities/ai_config.dart';
 import 'package:zephyr/core/services/ai_advisor_service.dart';
 import '../import.dart';
 

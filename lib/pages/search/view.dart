@@ -40,18 +40,18 @@ class _SearchPageState extends State<SearchPage> {
         });
         return;
       }
-      _onSearch(query);
+      _searchCities(query);
     });
   }
 
-  void _onSearch(String query) async {
+  void _searchCities(String query) async {
     if (!mounted) return;
     setState(() {
       _loading = true;
       _error = '';
     });
     try {
-      final results = await Api.searchCity(query);
+      final results = await AppDependencies.searchCities(query);
       if (!mounted) return;
       setState(() {
         _results = results;
@@ -69,18 +69,8 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  void _onCityTap(City city) async {
-    String cityName = city.name;
-    String? admin = city.admin!;
-    String country = city.country;
-    final cityObj = City(
-      name: cityName,
-      admin: admin,
-      country: country,
-      lat: city.lat,
-      lon: city.lon,
-    );
-    Navigator.pop(context, cityObj);
+  void _selectCity(City city) {
+    Navigator.pop(context, city);
   }
 
   @override
@@ -103,14 +93,14 @@ class _SearchPageState extends State<SearchPage> {
           if (_error.isNotEmpty)
             SearchErrorWidget(
               error: _error,
-              onRetry: () => _onSearch(_controller.text.trim()),
+              onRetry: () => _searchCities(_controller.text.trim()),
             ),
           Expanded(
             child: SearchResultsWidget(
               results: _results,
               loading: _loading,
               isEmpty: _results.isEmpty && !_loading && _error.isEmpty,
-              onCityTap: _onCityTap,
+              onCityTap: _selectCity,
             ),
           ),
         ],

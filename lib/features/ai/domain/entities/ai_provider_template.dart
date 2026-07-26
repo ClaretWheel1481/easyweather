@@ -1,3 +1,4 @@
+/// Static metadata for each supported AI provider request format.
 class AIProviderTemplate {
   final String label;
   final String providerId;
@@ -45,22 +46,18 @@ class AIProviderTemplates {
     ),
   ];
 
-  static String resolveEndpointType(String providerId) {
-    switch (providerId) {
-      case openAICompatible:
-      case openAIResponses:
-      case anthropic:
-      case gemini:
-        return providerId;
-      default:
-        return openAICompatible;
-    }
-  }
+  static String resolveEndpointType(String providerId) => switch (providerId) {
+        openAICompatible ||
+        openAIResponses ||
+        anthropic ||
+        gemini =>
+          providerId,
+        _ => openAICompatible,
+      };
 
-  static AIProviderTemplate getTemplate(String providerId) {
-    return templates.firstWhere(
-      (t) => t.providerId == resolveEndpointType(providerId),
-      orElse: () => templates.first,
-    );
-  }
+  static AIProviderTemplate getTemplate(String providerId) =>
+      templates.firstWhere(
+        (template) => template.providerId == resolveEndpointType(providerId),
+        orElse: () => templates.first,
+      );
 }

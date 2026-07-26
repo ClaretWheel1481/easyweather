@@ -1,6 +1,6 @@
 export 'package:flutter/material.dart';
 export 'package:zephyr/l10n/generated/app_localizations.dart';
-export '../../../core/models/weather.dart';
+export 'package:zephyr/features/weather/domain/entities/weather.dart';
 export 'widgets/air_quality_widget.dart';
 export 'widgets/wind_line_chart.dart';
 export 'widgets/pressure_line_chart.dart';

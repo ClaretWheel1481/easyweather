@@ -98,7 +98,7 @@ Future<void> initAppSettings() async {
       debugPrint('iOS后台App刷新权限已授予');
     }
     // 针对iOS 启动时获取网络权限
-    await Api.testConnectivity();
+    await AppDependencies.weatherRepository.checkConnectivity();
   }
 
   // 避免重复注册WorkManager任务

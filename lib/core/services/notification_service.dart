@@ -7,7 +7,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter/foundation.dart';
 
-import '../models/weather_warning.dart';
+import '../../features/weather/domain/entities/weather_warning.dart';
 
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse notificationResponse) {
@@ -196,14 +196,14 @@ class NotificationService {
       return 'id:${warning.id}';
     }
     return 'fallback:${jsonEncode([
-      warning.sender,
-      warning.pubTime,
-      warning.title,
-      warning.startTime,
-      warning.endTime,
-      warning.type,
-      warning.text,
-    ])}';
+          warning.sender,
+          warning.pubTime,
+          warning.title,
+          warning.startTime,
+          warning.endTime,
+          warning.type,
+          warning.text,
+        ])}';
   }
 
   // Use a stable positive ID so each warning gets its own system notification.

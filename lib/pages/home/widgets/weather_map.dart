@@ -7,11 +7,13 @@ import 'package:flutter_map_cache/flutter_map_cache.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zephyr/app_constants.dart';
-import 'package:zephyr/core/models/city.dart';
+import 'package:zephyr/features/weather/domain/entities/city.dart';
 import 'package:zephyr/core/services/map_tile_cache.dart';
 import 'package:zephyr/core/services/rainviewer_service.dart';
-import 'package:zephyr/core/services/weather_cache.dart';
 import 'package:zephyr/l10n/generated/app_localizations.dart';
+
+// Keeps map tiles fresh on the same interval previously used by the weather cache.
+const _mapTileCacheMaxAge = Duration(minutes: 28);
 
 class WeatherMap extends StatelessWidget {
   final City city;
@@ -196,7 +198,7 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
     return _tileProvider ??= CachedTileProvider(
       store: store,
       dio: _tileDio ??= Dio(),
-      maxStale: weatherCacheMaxAge,
+      maxStale: _mapTileCacheMaxAge,
       hitCacheOnNetworkFailure: true,
       headers: {
         'User-Agent': '${AppConstants.appName}/${AppConstants.appVersion}'

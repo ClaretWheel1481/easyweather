@@ -33,9 +33,8 @@ class _LanguageSelectorWidgetState extends State<LanguageSelectorWidget> {
                   onChanged: (int? value) async {
                     if (value != null && value != currentIndex) {
                       localeCodeNotifier.value = appLanguages[value].code;
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setString(
-                          'locale_code', appLanguages[value].code);
+                      await AppDependencies.appPreferences
+                          .saveLocaleCode(appLanguages[value].code);
                       if (context.mounted) {
                         Navigator.of(context).pop();
                       }
