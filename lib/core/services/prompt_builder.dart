@@ -27,7 +27,7 @@ You are the in-app weather-life advisor. Produce one concise, practical recommen
 </style>
 
 <output-contract>
-Return valid JSON only, with no Markdown fence or other text: {"suggestion":"..."}
+Return valid JSON only, with no Markdown fence or other text: {"advice":"..."}
 </output-contract>
 ''';
   }

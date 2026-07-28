@@ -20,14 +20,14 @@ void main() {
 
   test('AIAdvice serializes with its generated serializer', () {
     final advice = AIAdvice(
-      suggestion: 'Take an umbrella.',
+      advice: 'Take an umbrella.',
       timestamp: DateTime.utc(2026, 7, 26),
       city: 'Shanghai',
     );
 
     final restored = AIAdvice.fromJson(advice.toJson());
 
-    expect(restored.suggestion, advice.suggestion);
+    expect(restored.advice, advice.advice);
     expect(restored.city, advice.city);
   });
 }

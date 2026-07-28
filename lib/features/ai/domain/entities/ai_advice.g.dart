@@ -7,13 +7,13 @@ part of 'ai_advice.dart';
 // **************************************************************************
 
 AIAdvice _$AIAdviceFromJson(Map<String, dynamic> json) => AIAdvice(
-      suggestion: json['suggestion'] as String,
+      advice: json['advice'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
       city: json['city'] as String,
     );
 
 Map<String, dynamic> _$AIAdviceToJson(AIAdvice instance) => <String, dynamic>{
-      'suggestion': instance.suggestion,
+      'advice': instance.advice,
       'timestamp': instance.timestamp.toIso8601String(),
       'city': instance.city,
     };

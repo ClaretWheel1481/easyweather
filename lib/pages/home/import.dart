@@ -34,3 +34,6 @@ export 'package:zephyr/pages/home/widgets/weather_info_tile.dart';
 export 'package:zephyr/pages/home/widgets/weather_map.dart';
 export 'package:flutter/foundation.dart';
 export 'dart:math';
+export 'package:zephyr/core/services/ai_advisor_service.dart';
+export 'package:zephyr/features/ai/domain/entities/ai_advice.dart';
+export 'package:zephyr/features/ai/domain/entities/ai_config.dart';

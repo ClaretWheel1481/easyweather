@@ -5,12 +5,12 @@ part 'ai_advice.g.dart';
 /// An actionable recommendation generated from a weather snapshot.
 @JsonSerializable()
 class AIAdvice {
-  final String suggestion;
+  final String advice;
   final DateTime timestamp;
   final String city;
 
   const AIAdvice({
-    required this.suggestion,
+    required this.advice,
     required this.timestamp,
     required this.city,
   });

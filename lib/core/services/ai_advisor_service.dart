@@ -155,7 +155,7 @@ class AIAdvisorService {
 
       return AIAdviceResponse.error('Request failed: ${response.statusCode}');
     } catch (e) {
-      return AIAdviceResponse.error('Failed to parse suggestion: $e');
+      return AIAdviceResponse.error('Failed to parse advice: $e');
     }
   }
 
@@ -289,20 +289,20 @@ class AIAdvisorService {
         content = jsonDecode(match.group(0)!);
       }
 
-      String suggestionText = '';
+      String adviceText = '';
 
       if (content.containsKey('candidates')) {
         final parts = content['candidates']?[0]?['content']?['parts'];
         if (parts != null && parts is List && parts.isNotEmpty) {
-          suggestionText = parts[0]['text'] ?? '';
+          adviceText = parts[0]['text'] ?? '';
         }
       } else if (content.containsKey('choices')) {
         final messageContent = content['choices']?[0]?['message']?['content'];
         if (messageContent != null) {
-          suggestionText = messageContent;
+          adviceText = messageContent;
         }
       } else if (content['output_text'] is String) {
-        suggestionText = content['output_text'];
+        adviceText = content['output_text'];
       } else if (content['output'] is List) {
         final outputTexts = <String>[];
         for (final item in content['output']) {
@@ -315,39 +315,38 @@ class AIAdvisorService {
             }
           }
         }
-        suggestionText = outputTexts.join();
+        adviceText = outputTexts.join();
       } else if (content.containsKey('content')) {
         final contentList = content['content'];
         if (contentList is List && contentList.isNotEmpty) {
-          suggestionText = contentList[0]['text'] ?? '';
+          adviceText = contentList[0]['text'] ?? '';
         } else if (contentList is String) {
-          suggestionText = contentList;
+          adviceText = contentList;
         }
       } else if (content.containsKey('message')) {
         final messageContent = content['message']?['content'];
         if (messageContent != null) {
-          suggestionText = messageContent;
+          adviceText = messageContent;
         }
       } else if (content.containsKey('response')) {
-        suggestionText = content['response'];
-      } else if (content.containsKey('suggestion')) {
-        suggestionText = content['suggestion'];
+        adviceText = content['response'];
+      } else if (content.containsKey('advice')) {
+        adviceText = content['advice'];
       }
 
-      if (suggestionText.isNotEmpty) {
-        final suggestionJson = _extractJsonFromText(suggestionText);
-        if (suggestionJson != null &&
-            suggestionJson.containsKey('suggestion')) {
-          suggestionText = suggestionJson['suggestion'];
+      if (adviceText.isNotEmpty) {
+        final adviceJson = _extractJsonFromText(adviceText);
+        if (adviceJson != null && adviceJson.containsKey('advice')) {
+          adviceText = adviceJson['advice'];
         }
       }
 
-      if (suggestionText.isEmpty) {
-        throw Exception('Can\'t find suggestion in response');
+      if (adviceText.isEmpty) {
+        throw Exception('Can\'t find advice in response');
       }
 
       return AIAdvice(
-        suggestion: suggestionText,
+        advice: adviceText,
         timestamp: DateTime.now(),
         city: cityName,
       );
@@ -357,10 +356,10 @@ class AIAdvisorService {
     }
   }
 
-  // 从自然语言文本中提取 {"suggestion": "..."} JSON 片段
+  // Extracts the advice JSON object embedded in a provider response.
   static Map<String, dynamic>? _extractJsonFromText(String text) {
     try {
-      final jsonRegex = RegExp(r'\{[^{}]*"suggestion"[^{}]*\}', dotAll: true);
+      final jsonRegex = RegExp(r'\{[^{}]*"advice"[^{}]*\}', dotAll: true);
       final match = jsonRegex.firstMatch(text);
       if (match != null) {
         return jsonDecode(match.group(0)!);

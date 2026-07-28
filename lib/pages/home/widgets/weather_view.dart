@@ -1,9 +1,6 @@
-import 'dart:convert';
-
 import 'package:intl/intl.dart';
-import 'package:zephyr/features/ai/domain/entities/ai_advice.dart';
-import 'package:zephyr/features/ai/domain/entities/ai_config.dart';
-import 'package:zephyr/core/services/ai_advisor_service.dart';
+
+import 'ai_advice_widget.dart';
 import '../import.dart';
 
 class WeatherView extends StatefulWidget {
@@ -25,22 +22,12 @@ class _WeatherViewState extends State<WeatherView>
   final LayoutService _layoutService = LayoutService();
   List<String> _layout = [];
   bool _layoutLoaded = false;
-  Future<_AiAdviceLoadResult>? _aiAdviceFuture;
 
   @override
   void initState() {
     super.initState();
     _loadLayout();
-    _aiAdviceFuture = _loadAiAdvice();
     layoutVersionNotifier.addListener(_onLayoutChanged);
-  }
-
-  @override
-  void didUpdateWidget(covariant WeatherView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_shouldRefreshAiAdvice(oldWidget)) {
-      _refreshAiAdvice();
-    }
   }
 
   @override
@@ -61,60 +48,6 @@ class _WeatherViewState extends State<WeatherView>
         _layoutLoaded = true;
       });
     }
-  }
-
-  bool _shouldRefreshAiAdvice(WeatherView oldWidget) {
-    if (oldWidget.city.name != widget.city.name ||
-        oldWidget.city.lat != widget.city.lat ||
-        oldWidget.city.lon != widget.city.lon) {
-      return true;
-    }
-
-    return _weatherSignature(oldWidget.weather, oldWidget.warnings) !=
-        _weatherSignature(widget.weather, widget.warnings);
-  }
-
-  String _weatherSignature(
-    WeatherData weather,
-    List<WeatherWarning> warnings,
-  ) {
-    final current = weather.current;
-    final firstHour = weather.hourly.isNotEmpty ? weather.hourly.first : null;
-    return [
-      weather.lastUpdated?.millisecondsSinceEpoch ?? 0,
-      current?.temperature ?? '',
-      current?.apparentTemperature ?? '',
-      current?.humidity ?? '',
-      current?.windSpeed ?? '',
-      current?.weatherCode ?? '',
-      firstHour?.precipitation ?? '',
-      jsonEncode(warnings.map((warning) => warning.toJson()).toList()),
-    ].join('|');
-  }
-
-  void _refreshAiAdvice() {
-    setState(() {
-      _aiAdviceFuture = _loadAiAdvice();
-    });
-  }
-
-  Future<_AiAdviceLoadResult> _loadAiAdvice() async {
-    final config = await AIAdvisorService.getConfig();
-
-    if (!_isAiConfigured(config)) {
-      return _AiAdviceLoadResult(config: config);
-    }
-
-    if (!(config?.enabled ?? false)) {
-      return _AiAdviceLoadResult(config: config);
-    }
-
-    final response = await AIAdvisorService.getAdvice(
-      widget.weather,
-      widget.city.name,
-      widget.warnings,
-    );
-    return _AiAdviceLoadResult(config: config, adviceResponse: response);
   }
 
   String formatPubTime(String pubTime) {
@@ -182,7 +115,11 @@ class _WeatherViewState extends State<WeatherView>
       case 'daily_forecast':
         return _buildDailyForecast(context);
       case 'ai_advice':
-        return _buildAiAdviceWidget(context);
+        return AIAdviceWidget(
+          city: widget.city,
+          weather: widget.weather,
+          warnings: widget.warnings,
+        );
       case 'details':
         return _buildDetailsWidget(context);
       case 'weather_map':
@@ -481,142 +418,6 @@ class _WeatherViewState extends State<WeatherView>
     );
   }
 
-  bool _isAiConfigured(AIConfig? config) {
-    if (config == null) return false;
-    return config.apiKey.trim().isNotEmpty &&
-        config.customEndpoint.trim().isNotEmpty;
-  }
-
-  Widget _buildAiAdviceWidget(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final l10n = AppLocalizations.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionTitle(l10n.aiAdviceTitle),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: Card(
-            elevation: 3,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            color: colorScheme.surface,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: FutureBuilder<_AiAdviceLoadResult>(
-                future: _aiAdviceFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    );
-                  }
-
-                  final result = snapshot.data;
-                  final config = result?.config;
-                  final hasConfiguredAI = _isAiConfigured(config);
-
-                  if (!hasConfiguredAI) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.aiAdviceNotConfigured,
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () async {
-                            await Navigator.pushNamed(context, '/llm-settings');
-                            if (mounted) {
-                              _refreshAiAdvice();
-                            }
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 36),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            l10n.aiAdviceGoConfigure,
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-
-                  if (!(config?.enabled ?? false)) {
-                    return Text(
-                      l10n.aiAdviceServiceDisabled,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    );
-                  }
-
-                  final response = result?.adviceResponse;
-                  if (response == null) {
-                    return Text(
-                      l10n.aiAdviceServiceDisabled,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    );
-                  }
-
-                  if (!response.success || response.advice == null) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          response.error ?? 'Failed to get AI advice',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: _refreshAiAdvice,
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 36),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(AppLocalizations.of(context).retry),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return Text(
-                    response.advice!.suggestion,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                      height: 1.45,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
   Widget _buildDetailsWidget(BuildContext context) {
     final current = widget.weather.current;
     final daily = widget.weather.daily;
@@ -636,14 +437,4 @@ class _WeatherViewState extends State<WeatherView>
       ],
     );
   }
-}
-
-class _AiAdviceLoadResult {
-  final AIConfig? config;
-  final AIAdviceResponse? adviceResponse;
-
-  const _AiAdviceLoadResult({
-    required this.config,
-    this.adviceResponse,
-  });
 }

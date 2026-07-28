@@ -1,5 +1,4 @@
 import 'package:zephyr/core/import.dart';
-import 'package:zephyr/core/services/forecast_widget_service.dart';
 
 import 'import.dart';
 
