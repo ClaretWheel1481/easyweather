@@ -12,8 +12,8 @@ import 'package:zephyr/core/services/map_tile_cache.dart';
 import 'package:zephyr/core/services/rainviewer_service.dart';
 import 'package:zephyr/l10n/generated/app_localizations.dart';
 
-// Keeps map tiles fresh on the same interval previously used by the weather cache.
-const _mapTileCacheMaxAge = Duration(minutes: 28);
+// Keeps changing radar frames short-lived without overriding OSM cache headers.
+const _radarTileCacheMaxAge = Duration(minutes: 28);
 
 class WeatherMap extends StatelessWidget {
   final City city;
@@ -173,8 +173,10 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
   late final Future<String?> _radarTileTemplate;
   late final Future<CacheStore> _tileCacheStore;
   late final MapController _mapController;
-  Dio? _tileDio;
-  CachedTileProvider? _tileProvider;
+  Dio? _osmTileDio;
+  Dio? _radarTileDio;
+  CachedTileProvider? _osmTileProvider;
+  CachedTileProvider? _radarTileProvider;
   double _zoom = 6;
 
   @override
@@ -189,16 +191,31 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
 
   @override
   void dispose() {
-    // Closes the tile HTTP client when this map leaves the widget tree.
-    _tileDio?.close(force: true);
+    // Closes both independently configured tile clients with the map.
+    _osmTileDio?.close(force: true);
+    _radarTileDio?.close(force: true);
     super.dispose();
   }
 
-  CachedTileProvider _getTileProvider(CacheStore store) {
-    return _tileProvider ??= CachedTileProvider(
+  CachedTileProvider _getOsmTileProvider(CacheStore store) {
+    return _osmTileProvider ??= CachedTileProvider(
       store: store,
-      dio: _tileDio ??= Dio(),
-      maxStale: _mapTileCacheMaxAge,
+      dio: _osmTileDio ??= Dio(),
+      // Honour OSM's Cache-Control, Expires, ETag, and Last-Modified headers.
+      cachePolicy: CachePolicy.request,
+      hitCacheOnNetworkFailure: true,
+      headers: {
+        'User-Agent': '${AppConstants.appName}/${AppConstants.appVersion}'
+      },
+    );
+  }
+
+  CachedTileProvider _getRadarTileProvider(CacheStore store) {
+    return _radarTileProvider ??= CachedTileProvider(
+      store: store,
+      dio: _radarTileDio ??= Dio(),
+      cachePolicy: CachePolicy.forceCache,
+      maxStale: _radarTileCacheMaxAge,
       hitCacheOnNetworkFailure: true,
       headers: {
         'User-Agent': '${AppConstants.appName}/${AppConstants.appVersion}'
@@ -228,7 +245,8 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final tileProvider = _getTileProvider(cacheSnapshot.data!);
+        final tileStore = cacheSnapshot.data!;
+        final osmTileProvider = _getOsmTileProvider(tileStore);
 
         return FutureBuilder<String?>(
           future: _radarTileTemplate,
@@ -254,7 +272,7 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
                     TileLayer(
                       urlTemplate: AppConstants.openStreetMapTileUrl,
                       userAgentPackageName: 'space.claret.zephyr',
-                      tileProvider: tileProvider,
+                      tileProvider: osmTileProvider,
                       // Combines higher-zoom OSM tiles to keep high-DPI maps sharp.
                       retinaMode: RetinaMode.isHighDensity(context),
                     ),
@@ -265,7 +283,7 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
                         child: TileLayer(
                           urlTemplate: snapshot.data!,
                           maxNativeZoom: 7,
-                          tileProvider: tileProvider,
+                          tileProvider: _getRadarTileProvider(tileStore),
                         ),
                       ),
                     MarkerLayer(
@@ -344,20 +362,51 @@ class _WeatherMapContentState extends State<_WeatherMapContent> {
                   child: Material(
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(6),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(6),
-                      onTap: () => launchUrl(
-                        Uri.parse('https://www.rainviewer.com/'),
-                        mode: LaunchMode.externalApplication,
-                      ),
-                      child: const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        child: Text(
-                          '© OpenStreetMap contributors · RainViewer',
+                    // Keep both sources visible and link each to its licence.
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          borderRadius: const BorderRadius.horizontal(
+                            left: Radius.circular(6),
+                          ),
+                          onTap: () => launchUrl(
+                            Uri.parse(
+                              'https://www.openstreetmap.org/copyright',
+                            ),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.fromLTRB(6, 3, 3, 3),
+                            child: Text(
+                              '© OpenStreetMap contributors',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 10),
+                            ),
+                          ),
+                        ),
+                        const Text(
+                          '·',
                           style: TextStyle(color: Colors.white, fontSize: 10),
                         ),
-                      ),
+                        InkWell(
+                          borderRadius: const BorderRadius.horizontal(
+                            right: Radius.circular(6),
+                          ),
+                          onTap: () => launchUrl(
+                            Uri.parse('https://www.rainviewer.com/'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.fromLTRB(3, 3, 6, 3),
+                            child: Text(
+                              'RainViewer',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 10),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
