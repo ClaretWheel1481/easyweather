@@ -107,7 +107,7 @@ class RainAnimation extends StatefulWidget {
 
   const RainAnimation({
     super.key,
-    this.dropCount = 40,
+    this.dropCount = 64,
     required this.maxHeight,
     this.collisionController,
   });
@@ -351,31 +351,55 @@ class _RainSimulation {
   }
 
   void _drawDrops(Canvas canvas) {
+    final trailPaint = Paint()
+      ..isAntiAlias = true
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final highlightPaint = Paint()
+      ..isAntiAlias = true
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
     for (final drop in _drops) {
       if (drop.delay > 0 || drop.velocity.distanceSquared < 1) continue;
 
       final direction = drop.velocity / drop.velocity.distance;
       final tail = drop.position - direction * drop.length;
       final color = Color.lerp(
-        const Color(0xFFADCBDD),
-        const Color(0xFFEAF7FF),
+        const Color(0xFF8CA8B8),
+        const Color(0xFFDDEEF5),
         drop.depth,
       )!;
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = drop.thickness
+      trailPaint
+        ..strokeWidth = drop.thickness * 1.12
         ..shader = ui.Gradient.linear(
           tail,
           drop.position,
           <Color>[
             color.withValues(alpha: 0),
-            color.withValues(alpha: drop.opacity * 0.48),
-            color.withValues(alpha: drop.opacity),
+            color.withValues(alpha: drop.opacity * 0.12),
+            color.withValues(alpha: drop.opacity * 0.68),
           ],
-          <double>[0, 0.58, 1],
+          <double>[0, 0.46, 1],
         );
-      canvas.drawLine(tail, drop.position, paint);
+      canvas.drawLine(tail, drop.position, trailPaint);
+
+      // A short, fine highlight suggests refraction without turning the
+      // entire streak into an opaque, plastic-looking capsule.
+      final highlightLength = drop.length * _lerp(0.2, 0.34, drop.depth);
+      final highlightColor = Color.lerp(
+        color,
+        const Color(0xFFF7FCFF),
+        0.58,
+      )!;
+      highlightPaint
+        ..strokeWidth = max(0.28, drop.thickness * 0.34).toDouble()
+        ..color = highlightColor.withValues(alpha: drop.opacity * 0.5);
+      canvas.drawLine(
+        drop.position - direction * highlightLength,
+        drop.position,
+        highlightPaint,
+      );
     }
   }
 
@@ -448,14 +472,30 @@ class _RainDrop {
     double baseWind, {
     bool initial = false,
   }) {
-    final depth = pow(random.nextDouble(), 0.62).toDouble();
+    // Most streaks stay fine and distant while a small foreground layer
+    // supplies the occasional large drop found in natural rainfall.
+    final isForeground = random.nextDouble() < 0.18;
+    final depth = isForeground
+        ? _lerp(
+            0.68,
+            1,
+            pow(random.nextDouble(), 0.75).toDouble(),
+          )
+        : pow(random.nextDouble(), 1.35).toDouble() * 0.86;
     final terminalSpeed =
-        _lerp(720, 1380, depth) * _lerp(0.92, 1.08, random.nextDouble());
-    final windBias = _lerp(-34, 34, random.nextDouble());
+        _lerp(680, 1450, depth) * _lerp(0.88, 1.12, random.nextDouble());
+    final windBias = _lerp(-38, 38, random.nextDouble());
     final margin = max(28.0, size.width * 0.12).toDouble();
+    final respawnRange =
+        min(360.0, max(180.0, size.height * 0.45)).toDouble();
     final positionY = initial
         ? -random.nextDouble() * (size.height + 160)
-        : -_lerp(24, 160, random.nextDouble());
+        : -_lerp(
+            12,
+            respawnRange,
+            pow(random.nextDouble(), 1.6).toDouble(),
+          );
+    final exposure = _lerp(0.014, 0.024, random.nextDouble());
 
     return _RainDrop(
       position: Offset(
@@ -464,21 +504,24 @@ class _RainDrop {
       ),
       velocity: Offset(
         baseWind * (0.55 + depth * 0.45) + windBias,
-        terminalSpeed * _lerp(0.72, 0.9, random.nextDouble()),
+        terminalSpeed * _lerp(0.66, 0.94, random.nextDouble()),
       ),
       terminalSpeed: terminalSpeed,
-      // Enlarge streak geometry without changing rain density or motion.
-      length: _lerp(11, 32, depth) * _lerp(0.86, 1.14, random.nextDouble()),
+      // Tie motion-blur length to velocity so faster foreground drops leave
+      // longer streaks instead of uniformly sized lines.
+      length: terminalSpeed *
+          exposure *
+          _lerp(0.9, 1.1, random.nextDouble()),
       thickness:
-          _lerp(0.52, 1.55, depth) * _lerp(0.88, 1.12, random.nextDouble()),
+          _lerp(0.46, 1.65, depth) * _lerp(0.86, 1.12, random.nextDouble()),
       opacity:
-          (_lerp(0.17, 0.46, depth) * _lerp(0.86, 1.08, random.nextDouble()))
-              .clamp(0.14, 0.5)
+          (_lerp(0.12, 0.4, depth) * _lerp(0.84, 1.1, random.nextDouble()))
+              .clamp(0.1, 0.42)
               .toDouble(),
       depth: depth,
       windBias: windBias,
       gustPhase: random.nextDouble() * pi * 2,
-      delay: initial ? 0 : pow(random.nextDouble(), 2).toDouble() * 0.45,
+      delay: initial ? 0 : _sampleRainSpawnDelay(random),
     );
   }
 }
@@ -677,4 +720,13 @@ _RainHit? _segmentRectHit(Offset start, Offset end, Rect rect) {
 
 double _lerp(double start, double end, double progress) {
   return start + (end - start) * progress;
+}
+
+double _sampleRainSpawnDelay(Random random) {
+  // Independent exponential waits are memoryless, preventing completed drops
+  // from respawning together in visible waves while retaining natural clumps.
+  const meanDelay = 0.18;
+  const maxDelay = 1.4;
+  final delay = -log(1 - random.nextDouble()) * meanDelay;
+  return min(delay, maxDelay).toDouble();
 }
