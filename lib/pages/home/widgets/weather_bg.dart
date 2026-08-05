@@ -14,9 +14,8 @@ class _WeatherBgState extends State<WeatherBg> {
   Widget build(BuildContext context) {
     final code = widget.weatherCode;
     LinearGradient gradient;
-    final isRain =
-        [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].contains(code);
-    final isThunder = [95, 96, 99].contains(code);
+    final isRain = rainWeatherCodes.contains(code);
+    final isThunder = thunderWeatherCodes.contains(code);
     final isSnow = [71, 73, 75, 77, 85, 86].contains(code);
     if (code == 0) {
       // 晴天
@@ -77,19 +76,8 @@ class _WeatherBgState extends State<WeatherBg> {
                 gradient: gradient,
               ),
             ),
-            if (isRain)
-              RainAnimation(
-                maxHeight: constraints.maxHeight,
-              ),
-            if (isThunder)
-              Stack(
-                children: [
-                  RainAnimation(
-                    maxHeight: constraints.maxHeight,
-                  ),
-                  ThunderFlashAnimation(),
-                ],
-              ),
+            // Rain and thunder effects are painted with Home content so rain
+            // can collide with the rendered component bounds.
             if (isSnow)
               SnowAnimation(
                 maxHeight: constraints.maxHeight,

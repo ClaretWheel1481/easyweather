@@ -1,5 +1,22 @@
 import '../import.dart';
 
+const Set<int> rainWeatherCodes = <int>{
+  51,
+  53,
+  55,
+  56,
+  57,
+  61,
+  63,
+  65,
+  66,
+  67,
+  80,
+  81,
+  82,
+};
+const Set<int> thunderWeatherCodes = <int>{95, 96, 99};
+
 // 天气代码转图标
 IconData weatherIcon(int? code) {
   if (code == null) return Icons.help_outline;
@@ -7,11 +24,11 @@ IconData weatherIcon(int? code) {
   if ([1, 2].contains(code)) return Icons.cloud_queue;
   if (code == 3) return Icons.cloud;
   if ([45, 48].contains(code)) return Icons.foggy;
-  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].contains(code)) {
+  if (rainWeatherCodes.contains(code)) {
     return Icons.grain;
   }
   if ([71, 73, 75, 77, 85, 86].contains(code)) return Icons.ac_unit;
-  if ([95, 96, 99].contains(code)) return Icons.flash_on;
+  if (thunderWeatherCodes.contains(code)) return Icons.flash_on;
   return Icons.cloud_queue;
 }
 

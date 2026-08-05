@@ -297,6 +297,10 @@ class _HomePageState extends State<HomePage> {
         children: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 500),
+            // Keep the transition unkeyed so AnimatedSwitcher can assign a
+            // unique entry key when the same weather code reappears quickly.
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
             child: cities.isEmpty
                 ? const SizedBox.shrink()
                 : WeatherBg(

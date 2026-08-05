@@ -20,6 +20,8 @@ class WeatherView extends StatefulWidget {
 class _WeatherViewState extends State<WeatherView>
     with SingleTickerProviderStateMixin {
   final LayoutService _layoutService = LayoutService();
+  final RainCollisionController _rainCollisionController =
+      RainCollisionController();
   List<String> _layout = [];
   bool _layoutLoaded = false;
 
@@ -91,16 +93,56 @@ class _WeatherViewState extends State<WeatherView>
       return const Center(child: CircularProgressIndicator());
     }
 
-    return ListView.builder(
+    final content = ListView.builder(
+      // Leave open gutters outside component bounds for uninterrupted rain.
       padding: const EdgeInsets.only(
-          left: 12, right: 12, top: kToolbarHeight + 72, bottom: 16),
+          left: 24, right: 24, top: kToolbarHeight + 72, bottom: 16),
       itemCount: _layout.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          return _buildMainWeatherCard(context);
+          // The summary has no outer material surface, so it must not create
+          // an invisible full-width rain collision region.
+          return _buildMainWeatherSummary(context);
         }
+
         final componentId = _layout[index - 1];
-        return _buildComponentById(componentId);
+        final component = _buildComponentById(componentId);
+
+        // Every sorted layout item contributes its live render bounds.
+        return RainCollisionSurface(
+          controller: _rainCollisionController,
+          child: component,
+        );
+      },
+    );
+
+    final weatherCode = widget.weather.current?.weatherCode;
+    final isThunder = thunderWeatherCodes.contains(weatherCode);
+    final hasRain = rainWeatherCodes.contains(weatherCode) || isThunder;
+    if (!hasRain) return content;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            content,
+            // Paint rain after the content so impacts remain visible while
+            // IgnorePointer preserves every Home interaction.
+            IgnorePointer(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  RainAnimation(
+                    maxHeight: constraints.maxHeight,
+                    collisionController: _rainCollisionController,
+                  ),
+                  if (isThunder) const ThunderFlashAnimation(),
+                ],
+              ),
+            ),
+          ],
+        );
       },
     );
   }
@@ -129,145 +171,178 @@ class _WeatherViewState extends State<WeatherView>
     }
   }
 
-  Widget _buildMainWeatherCard(BuildContext context) {
+  Widget _buildMainWeatherSummary(BuildContext context) {
     final current = widget.weather.current;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final l10n = AppLocalizations.of(context);
     final hasWarning = widget.warnings.isNotEmpty;
 
     if (current == null) return const SizedBox.shrink();
 
-    return Column(
-      children: [
-        Stack(
-          children: [
-            Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24)),
-              color: colorScheme.primaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(18.0),
-                child: Column(
-                  children: [
-                    Icon(weatherIcon(current.weatherCode),
-                        size: 72, color: colorScheme.primary),
-                    const SizedBox(height: 8),
-                    ValueListenableBuilder<String>(
-                      valueListenable: tempUnitNotifier,
-                      builder: (context, unit, _) => Text(
-                        '${current.temperature}°$unit',
-                        style: textTheme.displayLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      ),
+    // Theme surface colors cannot guarantee contrast on weather gradients.
+    final useLightForeground = theme.brightness == Brightness.dark ||
+        rainWeatherCodes.contains(current.weatherCode) ||
+        thunderWeatherCodes.contains(current.weatherCode);
+    final summaryForeground = useLightForeground
+        ? const Color(0xFFF4F7FB)
+        : const Color(0xFF263238).withValues(alpha: 0.86);
+    final summarySecondary = summaryForeground.withValues(
+      alpha: useLightForeground ? 0.82 : 0.68,
+    );
+    final summaryShadows = useLightForeground
+        ? <Shadow>[
+            Shadow(
+              color: Colors.black.withValues(alpha: 0.28),
+              blurRadius: 8,
+              offset: const Offset(0, 1),
+            ),
+          ]
+        : const <Shadow>[];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        children: [
+          if (hasWarning)
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: RainCollisionSurface(
+                controller: _rainCollisionController,
+                child: FilledButton.tonalIcon(
+                  onPressed: _showWarningBannerDialog,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.errorContainer,
+                    foregroundColor: colorScheme.onErrorContainer,
+                  ),
+                  icon: const Icon(Icons.warning_amber_rounded),
+                  label: Text('${l10n.alert} (${widget.warnings.length})'),
+                ),
+              ),
+            ),
+          if (hasWarning) const SizedBox(height: 8),
+          Icon(
+            weatherIcon(current.weatherCode),
+            size: 64,
+            color: summaryForeground,
+            shadows: summaryShadows,
+          ),
+          const SizedBox(height: 4),
+          ValueListenableBuilder<String>(
+            valueListenable: tempUnitNotifier,
+            builder: (context, unit, _) {
+              return Column(
+                children: [
+                  Text(
+                    '${current.temperature}°$unit',
+                    style: textTheme.displayLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: summaryForeground,
+                      shadows: summaryShadows,
                     ),
-                    const SizedBox(height: 8),
-                    Text(getLocalizedWeatherDesc(context, current.weatherCode),
-                        style: textTheme.titleMedium?.copyWith(
-                          color: colorScheme.onPrimaryContainer,
-                        )),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        WeatherInfoTile(
-                          icon: Icons.thermostat,
-                          label: AppLocalizations.of(context).feelsLike,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    getLocalizedWeatherDesc(context, current.weatherCode),
+                    style: textTheme.titleLarge?.copyWith(
+                      color: summarySecondary,
+                      shadows: summaryShadows,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: WeatherInfoTile(
+                          icon: Icons.thermostat_rounded,
+                          label: l10n.feelsLike,
                           value: current.apparentTemperature != null
                               ? current.apparentTemperature!.toStringAsFixed(1)
                               : '-',
-                          unit: '°${tempUnitNotifier.value}',
+                          unit: '°$unit',
+                          foregroundColor: summaryForeground,
                         ),
-                        WeatherInfoTile(
-                          icon: Icons.water_drop,
-                          label: AppLocalizations.of(context).humidity,
+                      ),
+                      Expanded(
+                        child: WeatherInfoTile(
+                          icon: Icons.water_drop_rounded,
+                          label: l10n.humidity,
                           value: current.humidity != null
                               ? current.humidity!.toStringAsFixed(0)
                               : '-',
                           unit: '%',
-                        ),
-                        WeatherInfoTile(
-                          icon: Icons.navigation,
-                          label: AppLocalizations.of(context).windDirection,
-                          value: current.windDirection != null
-                              ? getLocalizedWindDirection(
-                                  context, current.windDirection!)
-                              : '-',
-                          unit: '',
-                        ),
-                        WeatherInfoTile(
-                          icon: current.pm25 != null
-                              ? getAirQualityIcon(
-                                  getAirQualityLevel(euAQI: current.aqi))
-                              : Icons.air,
-                          label: AppLocalizations.of(context).airQuality,
-                          value: current.pm25 != null
-                              ? getLocalizedAirQualityDesc(context,
-                                  getAirQualityLevel(euAQI: current.aqi))
-                              : '-',
-                          unit: '',
-                        ),
-                      ],
-                    ),
-                    if (widget.weather.lastUpdated != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${AppLocalizations.of(context).lastUpdated}: ${DateFormat('HH:mm').format(widget.weather.lastUpdated!)}',
-                              style: textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onPrimaryContainer
-                                    .withValues(alpha: 0.7),
-                              ),
-                            ),
-                          ],
+                          foregroundColor: summaryForeground,
                         ),
                       ),
+                      Expanded(
+                        child: WeatherInfoTile(
+                          icon: Icons.navigation_rounded,
+                          label: l10n.windDirection,
+                          value: current.windDirection != null
+                              ? getLocalizedWindDirection(
+                                  context,
+                                  current.windDirection!,
+                                )
+                              : '-',
+                          unit: '',
+                          foregroundColor: summaryForeground,
+                        ),
+                      ),
+                      Expanded(
+                        child: WeatherInfoTile(
+                          icon: current.pm25 != null
+                              ? getAirQualityIcon(
+                                  getAirQualityLevel(euAQI: current.aqi),
+                                )
+                              : Icons.air_rounded,
+                          label: l10n.airQuality,
+                          value: current.pm25 != null
+                              ? getLocalizedAirQualityDesc(
+                                  context,
+                                  getAirQualityLevel(euAQI: current.aqi),
+                                )
+                              : '-',
+                          unit: '',
+                          foregroundColor: summaryForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+          if (widget.weather.lastUpdated != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 16,
+                      color: summarySecondary,
+                      shadows: summaryShadows,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${l10n.lastUpdated}: ${DateFormat('HH:mm').format(widget.weather.lastUpdated!)}',
+                      style: textTheme.labelMedium?.copyWith(
+                        color: summarySecondary,
+                        shadows: summaryShadows,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            if (hasWarning)
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Material(
-                  color: colorScheme.error,
-                  borderRadius: BorderRadius.circular(24),
-                  elevation: 3,
-                  shadowColor: colorScheme.error.withValues(alpha: 0.2),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(24),
-                    onTap: _showWarningBannerDialog,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(5, 5, 5, 5),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error, color: colorScheme.onError),
-                          const SizedBox(width: 4),
-                          Text(
-                            AppLocalizations.of(context).alert,
-                            style: textTheme.titleMedium?.copyWith(
-                              color: colorScheme.onError,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 20),
-      ],
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
