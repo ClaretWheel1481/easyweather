@@ -107,6 +107,7 @@ class RainAnimation extends StatefulWidget {
 
   const RainAnimation({
     super.key,
+    // Heavy rain comes from stronger streaks, not an overcrowded field.
     this.dropCount = 64,
     required this.maxHeight,
     this.collisionController,
@@ -474,7 +475,7 @@ class _RainDrop {
   }) {
     // Most streaks stay fine and distant while a small foreground layer
     // supplies the occasional large drop found in natural rainfall.
-    final isForeground = random.nextDouble() < 0.18;
+    final isForeground = random.nextDouble() < 0.24;
     final depth = isForeground
         ? _lerp(
             0.68,
@@ -483,7 +484,7 @@ class _RainDrop {
           )
         : pow(random.nextDouble(), 1.35).toDouble() * 0.86;
     final terminalSpeed =
-        _lerp(680, 1450, depth) * _lerp(0.88, 1.12, random.nextDouble());
+        _lerp(740, 1600, depth) * _lerp(0.86, 1.14, random.nextDouble());
     final windBias = _lerp(-38, 38, random.nextDouble());
     final margin = max(28.0, size.width * 0.12).toDouble();
     final respawnRange = min(360.0, max(180.0, size.height * 0.45)).toDouble();
@@ -494,7 +495,7 @@ class _RainDrop {
             respawnRange,
             pow(random.nextDouble(), 1.6).toDouble(),
           );
-    final exposure = _lerp(0.014, 0.024, random.nextDouble());
+    final exposure = _lerp(0.018, 0.032, random.nextDouble());
 
     return _RainDrop(
       position: Offset(
@@ -508,11 +509,12 @@ class _RainDrop {
       terminalSpeed: terminalSpeed,
       // Tie motion-blur length to velocity so faster foreground drops leave
       // longer streaks instead of uniformly sized lines.
-      length: terminalSpeed * exposure * _lerp(0.9, 1.1, random.nextDouble()),
+      length:
+          terminalSpeed * exposure * _lerp(0.82, 1.18, random.nextDouble()),
       thickness:
-          _lerp(0.46, 1.65, depth) * _lerp(0.86, 1.12, random.nextDouble()),
-      opacity: (_lerp(0.12, 0.4, depth) * _lerp(0.84, 1.1, random.nextDouble()))
-          .clamp(0.1, 0.42)
+          _lerp(0.58, 1.9, depth) * _lerp(0.8, 1.16, random.nextDouble()),
+      opacity: (_lerp(0.15, 0.48, depth) * _lerp(0.8, 1.12, random.nextDouble()))
+          .clamp(0.12, 0.52)
           .toDouble(),
       depth: depth,
       windBias: windBias,
