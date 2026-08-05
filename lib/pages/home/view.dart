@@ -11,7 +11,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late final AppLifecycleListener _listener;
+  List<City> _savedCities = [];
   List<City> cities = [];
+  City? _currentLocationCity;
+  bool _currentLocationEnabled = false;
+  bool _locationRefreshInProgress = false;
   int pageIndex = 0;
   Map<String, WeatherData?> weatherMap = {};
   Map<String, List<WeatherWarning>> warningsMap = {};
@@ -23,20 +27,27 @@ class _HomePageState extends State<HomePage> {
     return '${city.lat}_${city.lon}_${weatherSourceNotifier.value}';
   }
 
+  bool get _hasCurrentLocationPage =>
+      _currentLocationEnabled && _currentLocationCity != null;
+
+  List<City> _buildVisibleCities() {
+    // The live location is a fixed first page, outside saved city ordering.
+    return [
+      if (_hasCurrentLocationPage) _currentLocationCity!,
+      ..._savedCities,
+    ];
+  }
+
   @override
   void initState() {
     super.initState();
     tempUnitNotifier.addListener(_onUnitChanged);
     weatherSourceNotifier.addListener(_onSourceChanged);
-    _loadCities();
+    _loadCities(refreshLocation: true);
 
     _listener = AppLifecycleListener(
       onResume: () {
-        if (cities.isNotEmpty) {
-          for (var city in cities) {
-            _loadWeather(city, force: false);
-          }
-        }
+        _refreshForForeground();
       },
     );
   }
@@ -65,25 +76,33 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _loadCities() async {
-    final list = await AppDependencies.loadSavedCities();
-    var idx = 0;
+  Future<void> _loadCities({bool refreshLocation = false}) async {
+    final savedCities = await AppDependencies.loadSavedCities();
+    final locationEnabled =
+        await AppDependencies.cityRepository.loadCurrentLocationEnabled();
+    final locationCity = locationEnabled
+        ? await AppDependencies.cityRepository.loadCurrentLocationCity()
+        : null;
     if (!mounted) return;
 
-    if (list.isNotEmpty && idx >= list.length) {
-      idx = 0;
-    }
-
     setState(() {
-      cities = list;
-      pageIndex = idx;
+      _savedCities = savedCities;
+      _currentLocationEnabled = locationEnabled;
+      _currentLocationCity = locationCity;
+      cities = _buildVisibleCities();
+      pageIndex = 0;
       if (_pageController == null || _pageController!.hasClients == false) {
-        _pageController = PageController(initialPage: idx);
+        _pageController = PageController(initialPage: 0);
       }
     });
 
-    for (var city in cities) {
-      _loadWeather(city);
+    for (var index = 0; index < cities.length; index++) {
+      // Resolve the fresh coordinates before loading the location page once.
+      final waitsForLocation =
+          refreshLocation && _hasCurrentLocationPage && index == 0;
+      if (!waitsForLocation) {
+        _loadWeather(cities[index]);
+      }
     }
 
     if (cities.isNotEmpty) {
@@ -96,6 +115,35 @@ class _HomePageState extends State<HomePage> {
         );
       }
     }
+
+    if (locationEnabled && refreshLocation) {
+      final locationUpdated = await _refreshCurrentLocation();
+      if (!locationUpdated && locationCity != null) {
+        _loadWeather(locationCity, force: false);
+      }
+    }
+  }
+
+  Future<void> _refreshForForeground() async {
+    final locationEnabled =
+        await AppDependencies.cityRepository.loadCurrentLocationEnabled();
+    if (!mounted) return;
+
+    if (locationEnabled != _currentLocationEnabled) {
+      await _loadCities(refreshLocation: locationEnabled);
+      return;
+    }
+
+    if (locationEnabled) {
+      final locationUpdated = await _refreshCurrentLocation();
+      if (!locationUpdated && _currentLocationCity != null) {
+        // Keep refreshing the last coordinates when a new fix is unavailable.
+        _loadWeather(_currentLocationCity!, force: false);
+      }
+    }
+    for (final city in _savedCities) {
+      _loadWeather(city, force: false);
+    }
   }
 
   Future<void> _loadWeather(City city, {bool force = false}) async {
@@ -105,6 +153,7 @@ class _HomePageState extends State<HomePage> {
     });
     final snapshot =
         await AppDependencies.loadWeather(city, forceRefresh: force);
+    if (!mounted) return;
     if (snapshot != null) {
       setState(() {
         weatherMap[_weatherMapKey(city)] = snapshot.weather;
@@ -174,7 +223,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _onOpenSettings() async {
     await Navigator.pushNamed(context, '/settings');
-    await _loadCities();
+    await _loadCities(refreshLocation: true);
+    if (!mounted) return;
     setState(() {
       pageIndex = 0;
     });
@@ -185,81 +235,103 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<bool> _refreshCurrentLocation({
+    bool enableLocation = false,
+    bool showFeedback = false,
+    bool moveToFirst = false,
+  }) async {
+    if (_locationRefreshInProgress) return true;
+    _locationRefreshInProgress = true;
+
+    try {
+      if (showFeedback) {
+        NotificationUtils.showSnackBar(
+          context,
+          AppLocalizations.of(context).locating,
+        );
+      }
+
+      final position = await LocationService.getCurrentPosition();
+      if (position == null) {
+        if (showFeedback && mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          NotificationUtils.showSnackBar(
+            context,
+            AppLocalizations.of(context).locationPermissionDenied,
+          );
+        }
+        return false;
+      }
+
+      final repository = AppDependencies.cityRepository;
+      final previousCity =
+          _currentLocationCity ?? await repository.loadCurrentLocationCity();
+      final locationChanged = previousCity == null ||
+          LocationService.hasMeaningfulLocationChange(previousCity, position);
+      final city = locationChanged
+          ? await LocationService.getCityFromPosition(position)
+          : previousCity;
+      if (city == null) {
+        if (showFeedback && mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          NotificationUtils.showSnackBar(
+            context,
+            AppLocalizations.of(context).locationNotRecognized,
+          );
+        }
+        return false;
+      }
+
+      if (locationChanged) {
+        await repository.saveCurrentLocationCity(city);
+      }
+      if (enableLocation) {
+        // Choosing location from the first-run screen enables it persistently.
+        await repository.saveCurrentLocationEnabled(true);
+      }
+      if (!mounted) return false;
+
+      setState(() {
+        _currentLocationEnabled =
+            enableLocation || _currentLocationEnabled;
+        _currentLocationCity = city;
+        cities = _buildVisibleCities();
+        if (moveToFirst) pageIndex = 0;
+      });
+
+      if (showFeedback) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        NotificationUtils.showSnackBar(
+          context,
+          AppLocalizations.of(context).locatingSuccess,
+        );
+      }
+
+      if (moveToFirst) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_pageController != null && _pageController!.hasClients) {
+            _pageController!.animateToPage(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          }
+        });
+      }
+
+      await _loadWeather(city, force: locationChanged);
+      return true;
+    } finally {
+      _locationRefreshInProgress = false;
+    }
+  }
+
   Future<void> _onLocate() async {
-    NotificationUtils.showSnackBar(
-      context,
-      AppLocalizations.of(context).locating,
+    await _refreshCurrentLocation(
+      enableLocation: true,
+      showFeedback: true,
+      moveToFirst: true,
     );
-    final pos = await LocationService.getCurrentPosition();
-    if (pos == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      NotificationUtils.showSnackBar(
-        context,
-        AppLocalizations.of(context).locationPermissionDenied,
-      );
-      return;
-    } else {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      NotificationUtils.showSnackBar(
-        context,
-        AppLocalizations.of(context).locatingSuccess,
-      );
-    }
-    final city = await LocationService.getCityFromPosition(pos);
-    if (city == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      NotificationUtils.showSnackBar(
-        context,
-        AppLocalizations.of(context).locationNotRecognized,
-      );
-      return;
-    }
-    final list = await AppDependencies.cityRepository.loadCities();
-    if (!list.any((c) => c.lat == city.lat && c.lon == city.lon)) {
-      await AppDependencies.saveCity(city);
-      await _loadCities();
-      final newIdx = cities.indexWhere(
-        (item) => item.lat == city.lat && item.lon == city.lon,
-      );
-      if (newIdx >= 0 && newIdx < cities.length) {
-        setState(() {
-          pageIndex = newIdx;
-        });
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_pageController != null && _pageController!.hasClients) {
-            _pageController!.animateToPage(
-              newIdx,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-          }
-        });
-      }
-    } else {
-      int existIdx =
-          list.indexWhere((c) => c.lat == city.lat && c.lon == city.lon);
-      if (existIdx >= 0 && existIdx < cities.length) {
-        setState(() {
-          pageIndex = existIdx;
-        });
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_pageController != null && _pageController!.hasClients) {
-            _pageController!.animateToPage(
-              existIdx,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-          }
-        });
-      }
-    }
   }
 
   @override
@@ -276,6 +348,7 @@ class _HomePageState extends State<HomePage> {
         currentCityName: currentCity?.name,
         citiesLength: cities.length,
         pageIndex: pageIndex,
+        hasCurrentLocation: _hasCurrentLocationPage,
         onAddCity: _onAddCity,
         onOpenSettings: _onOpenSettings,
         onLocate: _onLocate,

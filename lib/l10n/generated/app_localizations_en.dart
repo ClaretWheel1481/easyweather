@@ -182,6 +182,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addByLocation => 'Add by Location';
 
   @override
+  String get currentLocation => 'Current Location';
+
+  @override
   String get locating => 'Getting location information...';
 
   @override

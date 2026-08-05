@@ -21,6 +21,7 @@ class _SettingsPageState extends State<SettingsPage> {
   // 城市管理相关
   List<City> _cities = [];
   int _mainCityIndex = 0;
+  bool _currentLocationEnabled = false;
   bool _cityLoading = true;
   bool _cityManagerExpanded = false;
 
@@ -61,10 +62,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadCities() async {
     final cities = await AppDependencies.cityRepository.loadCities();
     final mainIndex = await AppDependencies.cityRepository.loadMainCityIndex();
+    final currentLocationEnabled =
+        await AppDependencies.cityRepository.loadCurrentLocationEnabled();
     if (!mounted) return;
     setState(() {
       _cities = cities;
       _mainCityIndex = mainIndex < cities.length ? mainIndex : 0;
+      _currentLocationEnabled = currentLocationEnabled;
       _cityLoading = false;
     });
   }
@@ -115,6 +119,16 @@ class _SettingsPageState extends State<SettingsPage> {
       _mainCityIndex = index;
     });
     await _saveCities();
+  }
+
+  Future<void> _saveCurrentLocationEnabled(bool enabled) async {
+    // Persist the virtual location page independently from city ordering.
+    await AppDependencies.cityRepository
+        .saveCurrentLocationEnabled(enabled);
+    if (!mounted) return;
+    setState(() {
+      _currentLocationEnabled = enabled;
+    });
   }
 
   Future<void> _saveThemeMode(ThemeMode mode) async {
@@ -205,8 +219,10 @@ class _SettingsPageState extends State<SettingsPage> {
           CityManagerWidget(
             cities: _cities,
             mainCityIndex: _mainCityIndex,
+            currentLocationEnabled: _currentLocationEnabled,
             cityLoading: _cityLoading,
             cityManagerExpanded: _cityManagerExpanded,
+            onCurrentLocationChanged: _saveCurrentLocationEnabled,
             onSetMainCity: _setMainCity,
             onRemoveCity: _removeCity,
             onToggleExpand: () {

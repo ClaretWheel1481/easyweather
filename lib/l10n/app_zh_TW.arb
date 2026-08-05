@@ -61,6 +61,7 @@
   "uvIndex": "紫外線指數",
   "addCity": "添加城市",
   "addByLocation": "定位添加",
+  "currentLocation": "目前位置",
   "locating": "正在獲取位置信息...",
   "locationPermissionDenied": "無法獲取定位權限或定位服務未開啟",
   "locationNotRecognized": "無法識別當前位置",

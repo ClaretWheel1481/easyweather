@@ -22,6 +22,22 @@ class CityRepositoryImpl implements CityRepository {
 
   @override
   Future<void> saveMainCityIndex(int index) => _local.saveMainCityIndex(index);
+
+  @override
+  Future<bool> loadCurrentLocationEnabled() =>
+      _local.loadCurrentLocationEnabled();
+
+  @override
+  Future<void> saveCurrentLocationEnabled(bool enabled) =>
+      _local.saveCurrentLocationEnabled(enabled);
+
+  @override
+  Future<City?> loadCurrentLocationCity() =>
+      _local.loadCurrentLocationCity();
+
+  @override
+  Future<void> saveCurrentLocationCity(City city) =>
+      _local.saveCurrentLocationCity(city);
 }
 
 class WeatherRepositoryImpl implements WeatherRepository {

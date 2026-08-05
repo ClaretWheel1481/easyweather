@@ -64,6 +64,7 @@
   "uvIndex": "紫外线指数",
   "addCity": "添加城市",
   "addByLocation": "定位添加",
+  "currentLocation": "当前定位",
   "locating": "正在获取位置信息...",
   "locationPermissionDenied": "无法获取定位权限或定位服务未开启",
   "locationNotRecognized": "无法获取当前位置",

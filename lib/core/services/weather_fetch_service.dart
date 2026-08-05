@@ -1,7 +1,45 @@
 import '../import.dart';
+import 'location_service.dart';
 
 class WeatherFetchService {
   static bool _isFetching = false;
+
+  static Future<City?> _loadPrimaryCity({
+    required bool refreshCurrentLocation,
+  }) async {
+    final repository = AppDependencies.cityRepository;
+    final locationEnabled = await repository.loadCurrentLocationEnabled();
+
+    if (locationEnabled) {
+      var locationCity = await repository.loadCurrentLocationCity();
+      if (refreshCurrentLocation) {
+        // Prefer a fresh background fix, then fall back to the persisted fix.
+        final position = await LocationService.getCurrentPosition(
+          requestPermission: false,
+          timeLimit: const Duration(seconds: 15),
+        );
+        if (position != null) {
+          final locationChanged = locationCity == null ||
+              LocationService.hasMeaningfulLocationChange(
+                locationCity,
+                position,
+              );
+          if (locationChanged) {
+            final updatedCity =
+                await LocationService.getCityFromPosition(position);
+            if (updatedCity != null) {
+              await repository.saveCurrentLocationCity(updatedCity);
+              locationCity = updatedCity;
+            }
+          }
+        }
+      }
+      if (locationCity != null) return locationCity;
+    }
+
+    final cities = await repository.loadCities();
+    return cities.isEmpty ? null : cities.first;
+  }
 
   static Future<Map<String, dynamic>?> getFreshWeatherData(City city) async {
     try {
@@ -15,10 +53,9 @@ class WeatherFetchService {
         await NotificationService().showWarningNotifications(warnings);
         if (kDebugMode) debugPrint('天气数据获取并缓存成功 for ${city.name}');
 
-        final cities = await AppDependencies.cityRepository.loadCities();
-        if (cities.isNotEmpty &&
-            cities.first.lat == city.lat &&
-            cities.first.lon == city.lon) {
+        final primaryCity =
+            await _loadPrimaryCity(refreshCurrentLocation: false);
+        if (primaryCity?.lat == city.lat && primaryCity?.lon == city.lon) {
           await ForecastWidgetService.updateAllWidgets(
             city: city,
             weatherData: weather,
@@ -46,13 +83,13 @@ class WeatherFetchService {
     try {
       if (kDebugMode) debugPrint('后台任务开始获取天气数据...');
 
-      final cities = await AppDependencies.cityRepository.loadCities();
-      if (cities.isEmpty) {
+      final mainCity =
+          await _loadPrimaryCity(refreshCurrentLocation: true);
+      if (mainCity == null) {
         if (kDebugMode) debugPrint('后台任务: 城市列表为空');
         return;
       }
 
-      final mainCity = cities.first;
       await getFreshWeatherData(mainCity);
     } catch (e) {
       if (kDebugMode) debugPrint('后台任务获取天气失败: $e');

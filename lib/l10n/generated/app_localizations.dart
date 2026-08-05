@@ -446,6 +446,12 @@ abstract class AppLocalizations {
   /// **'Add by Location'**
   String get addByLocation;
 
+  /// No description provided for @currentLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Location'**
+  String get currentLocation;
+
   /// No description provided for @locating.
   ///
   /// In en, this message translates to:

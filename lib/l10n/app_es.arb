@@ -63,6 +63,7 @@
   "uvIndex": "Índice UV",
   "addCity": "Agregar Ciudad",
   "addByLocation": "Agregar por Ubicación",
+  "currentLocation": "Ubicación actual",
   "locating": "Obteniendo ubicación...",
   "locationPermissionDenied": "Permiso de ubicación denegado o servicio desactivado",
   "locationNotRecognized": "Ubicación actual no reconocida",

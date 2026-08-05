@@ -6,4 +6,10 @@ abstract interface class CityRepository {
   Future<void> saveCities(List<City> cities);
   Future<int> loadMainCityIndex();
   Future<void> saveMainCityIndex(int index);
+
+  // Keeps the device location separate from the user's sortable city list.
+  Future<bool> loadCurrentLocationEnabled();
+  Future<void> saveCurrentLocationEnabled(bool enabled);
+  Future<City?> loadCurrentLocationCity();
+  Future<void> saveCurrentLocationCity(City city);
 }

@@ -182,6 +182,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addByLocation => '定位添加';
 
   @override
+  String get currentLocation => '当前定位';
+
+  @override
   String get locating => '正在获取位置信息...';
 
   @override
@@ -520,6 +523,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get addByLocation => '定位添加';
+
+  @override
+  String get currentLocation => '目前位置';
 
   @override
   String get locating => '正在獲取位置信息...';

@@ -5,6 +5,7 @@ class HomeAppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   final String? currentCityName;
   final int citiesLength;
   final int pageIndex;
+  final bool hasCurrentLocation;
   final VoidCallback onAddCity;
   final VoidCallback onOpenSettings;
   final VoidCallback onLocate;
@@ -14,6 +15,7 @@ class HomeAppBarWidget extends StatelessWidget implements PreferredSizeWidget {
     required this.currentCityName,
     required this.citiesLength,
     required this.pageIndex,
+    required this.hasCurrentLocation,
     required this.onAddCity,
     required this.onOpenSettings,
     required this.onLocate,
@@ -37,13 +39,33 @@ class HomeAppBarWidget extends StatelessWidget implements PreferredSizeWidget {
                   text: currentCityName ?? AppConstants.appName,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                if (citiesLength > 1)
+                if (citiesLength > 1 || hasCurrentLocation)
                   Padding(
                     padding: const EdgeInsets.only(top: 4.0),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: List.generate(citiesLength, (i) {
                         final isActive = i == pageIndex;
+                        if (hasCurrentLocation && i == 0) {
+                          // Distinguish the fixed device-location page from dots.
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            child: AnimatedScale(
+                              scale: isActive ? 1 : 0.72,
+                              duration: const Duration(milliseconds: 200),
+                              child: Icon(
+                                Icons.my_location,
+                                size: 13,
+                                color: isActive
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.3),
+                              ),
+                            ),
+                          );
+                        }
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           margin: const EdgeInsets.symmetric(horizontal: 3),

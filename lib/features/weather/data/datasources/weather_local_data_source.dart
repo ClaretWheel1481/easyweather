@@ -11,6 +11,8 @@ import '../../domain/entities/weather_snapshot.dart';
 class WeatherLocalDataSource {
   static const _citiesKey = 'cities';
   static const _mainCityIndexKey = 'main_city_index';
+  static const _currentLocationEnabledKey = 'current_location_enabled';
+  static const _currentLocationCityKey = 'current_location_city';
 
   Future<List<City>> loadCities() async {
     final raw = (await SharedPreferences.getInstance()).getString(_citiesKey);
@@ -38,6 +40,30 @@ class WeatherLocalDataSource {
 
   Future<void> saveMainCityIndex(int index) async =>
       (await SharedPreferences.getInstance()).setInt(_mainCityIndexKey, index);
+
+  Future<bool> loadCurrentLocationEnabled() async =>
+      (await SharedPreferences.getInstance())
+          .getBool(_currentLocationEnabledKey) ??
+      false;
+
+  Future<void> saveCurrentLocationEnabled(bool enabled) async =>
+      (await SharedPreferences.getInstance())
+          .setBool(_currentLocationEnabledKey, enabled);
+
+  Future<City?> loadCurrentLocationCity() async {
+    final raw = (await SharedPreferences.getInstance())
+        .getString(_currentLocationCityKey);
+    if (raw == null) return null;
+    try {
+      return City.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveCurrentLocationCity(City city) async =>
+      (await SharedPreferences.getInstance())
+          .setString(_currentLocationCityKey, jsonEncode(city.toJson()));
 
   Future<WeatherSnapshot?> loadCachedWeather(
     City city, {

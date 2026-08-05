@@ -33,7 +33,7 @@ class WeatherInfoTile extends StatelessWidget {
       excludeSemantics: true,
       label: '$label: $displayValue',
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -45,15 +45,21 @@ class WeatherInfoTile extends StatelessWidget {
               shadows: textShadows,
             ),
             const SizedBox(height: 6),
-            Text(
-              displayValue,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: textTheme.titleMedium?.copyWith(
-                color: foregroundColor,
-                fontWeight: FontWeight.w600,
-                shadows: textShadows,
+            // Scale long directions down instead of truncating their text.
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  displayValue,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: foregroundColor,
+                    fontWeight: FontWeight.w600,
+                    shadows: textShadows,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 2),

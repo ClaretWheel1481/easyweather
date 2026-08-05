@@ -63,6 +63,7 @@
   "uvIndex": "Indice UV",
   "addCity": "Ajouter une ville",
   "addByLocation": "Ajouter par localisation",
+  "currentLocation": "Position actuelle",
   "locating": "Obtention de la localisation...",
   "locationPermissionDenied": "Permission de localisation refusée ou service désactivé",
   "locationNotRecognized": "Localisation actuelle non reconnue",

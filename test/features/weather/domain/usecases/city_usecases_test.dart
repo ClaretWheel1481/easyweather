@@ -63,4 +63,16 @@ class _FakeCityRepository implements CityRepository {
 
   @override
   Future<void> saveMainCityIndex(int index) async {}
+
+  @override
+  Future<bool> loadCurrentLocationEnabled() async => false;
+
+  @override
+  Future<void> saveCurrentLocationEnabled(bool enabled) async {}
+
+  @override
+  Future<City?> loadCurrentLocationCity() async => null;
+
+  @override
+  Future<void> saveCurrentLocationCity(City city) async {}
 }

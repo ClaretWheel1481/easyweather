@@ -64,6 +64,7 @@
   "uvIndex": "UV Index",
   "addCity": "Add City",
   "addByLocation": "Add by Location",
+  "currentLocation": "Current Location",
   "locating": "Getting location information...",
   "locationPermissionDenied": "Unable to get location permission or location service is disabled",
   "locationNotRecognized": "Unable to recognize the current location",

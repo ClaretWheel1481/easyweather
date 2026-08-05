@@ -3,8 +3,10 @@ import '../import.dart';
 class CityManagerWidget extends StatelessWidget {
   final List<City> cities;
   final int mainCityIndex;
+  final bool currentLocationEnabled;
   final bool cityLoading;
   final bool cityManagerExpanded;
+  final ValueChanged<bool> onCurrentLocationChanged;
   final ValueChanged<int> onSetMainCity;
   final ValueChanged<int> onRemoveCity;
   final VoidCallback onToggleExpand;
@@ -13,8 +15,10 @@ class CityManagerWidget extends StatelessWidget {
     super.key,
     required this.cities,
     required this.mainCityIndex,
+    required this.currentLocationEnabled,
     required this.cityLoading,
     required this.cityManagerExpanded,
+    required this.onCurrentLocationChanged,
     required this.onSetMainCity,
     required this.onRemoveCity,
     required this.onToggleExpand,
@@ -79,6 +83,41 @@ class CityManagerWidget extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(12, 2, 12, 2),
                     child: Column(
                       children: [
+                        const SizedBox(height: 8),
+                        // This fixed page stays outside the sortable city list.
+                        Material(
+                          color: currentLocationEnabled
+                              ? colorScheme.primaryContainer
+                                  .withValues(alpha: 0.3)
+                              : colorScheme.surface.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(16),
+                          child: SwitchListTile(
+                            value: currentLocationEnabled,
+                            onChanged: cityLoading
+                                ? null
+                                : onCurrentLocationChanged,
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            secondary: Icon(
+                              Icons.my_location,
+                              color: currentLocationEnabled
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                            title: Text(
+                              l10n.currentLocation,
+                              style: textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: currentLocationEnabled
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         cityLoading
                             ? Container(

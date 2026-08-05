@@ -63,6 +63,7 @@
   "uvIndex": "UV-Index",
   "addCity": "Stadt hinzufügen",
   "addByLocation": "Per Standort hinzufügen",
+  "currentLocation": "Aktueller Standort",
   "locating": "Standort wird ermittelt...",
   "locationPermissionDenied": "Standortberechtigung verweigert oder Ortungsdienst nicht aktiviert",
   "locationNotRecognized": "Aktueller Standort nicht erkannt",
