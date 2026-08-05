@@ -12,4 +12,6 @@ abstract interface class CityRepository {
   Future<void> saveCurrentLocationEnabled(bool enabled);
   Future<City?> loadCurrentLocationCity();
   Future<void> saveCurrentLocationCity(City city);
+  Future<DateTime?> loadCurrentLocationUpdatedAt();
+  Future<void> saveCurrentLocationUpdatedAt(DateTime updatedAt);
 }

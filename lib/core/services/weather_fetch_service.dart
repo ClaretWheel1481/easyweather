@@ -13,24 +13,49 @@ class WeatherFetchService {
     if (locationEnabled) {
       var locationCity = await repository.loadCurrentLocationCity();
       if (refreshCurrentLocation) {
-        // Prefer a fresh background fix, then fall back to the persisted fix.
-        final position = await LocationService.getCurrentPosition(
-          requestPermission: false,
-          timeLimit: const Duration(seconds: 15),
-        );
+        final locationUpdatedAt =
+            await repository.loadCurrentLocationUpdatedAt();
+        final lastKnown = await LocationService.getLastKnownPosition();
+        final lastKnownChanged = lastKnown != null &&
+            locationCity != null &&
+            LocationService.hasMeaningfulLocationChange(
+              locationCity,
+              lastKnown,
+            );
+
+        Position? position;
+        if (lastKnown != null &&
+            LocationService.isNewerPosition(lastKnown, locationUpdatedAt) &&
+            (lastKnownChanged ||
+                LocationService.isLocationFixFresh(lastKnown.timestamp))) {
+          // Prefer a newer platform-cached fix without waking background GPS.
+          position = lastKnown;
+        } else if (locationCity == null ||
+            !LocationService.isLocationFixFresh(locationUpdatedAt)) {
+          position = await LocationService.getCurrentPosition(
+            requestPermission: false,
+            timeLimit: const Duration(seconds: 15),
+          );
+        }
+
         if (position != null) {
           final locationChanged = locationCity == null ||
               LocationService.hasMeaningfulLocationChange(
                 locationCity,
                 position,
               );
+          var acceptedPosition = !locationChanged;
           if (locationChanged) {
             final updatedCity =
                 await LocationService.getCityFromPosition(position);
             if (updatedCity != null) {
               await repository.saveCurrentLocationCity(updatedCity);
               locationCity = updatedCity;
+              acceptedPosition = true;
             }
+          }
+          if (acceptedPosition) {
+            await repository.saveCurrentLocationUpdatedAt(position.timestamp);
           }
         }
       }

@@ -75,4 +75,10 @@ class _FakeCityRepository implements CityRepository {
 
   @override
   Future<void> saveCurrentLocationCity(City city) async {}
+
+  @override
+  Future<DateTime?> loadCurrentLocationUpdatedAt() async => null;
+
+  @override
+  Future<void> saveCurrentLocationUpdatedAt(DateTime updatedAt) async {}
 }

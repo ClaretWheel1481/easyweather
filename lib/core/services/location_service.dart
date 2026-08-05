@@ -3,8 +3,18 @@ import 'package:geolocator/geolocator.dart';
 import 'package:zephyr/features/weather/domain/entities/city.dart';
 
 class LocationService {
+  static const Duration activeRefreshCooldown = Duration(minutes: 15);
   static const double _minimumLocationChangeMeters = 100;
   static final Geocoding _geocoding = Geocoding();
+
+  static bool isLocationFixFresh(DateTime? timestamp) {
+    if (timestamp == null) return false;
+    final age = DateTime.now().difference(timestamp);
+    return !age.isNegative && age < activeRefreshCooldown;
+  }
+
+  static bool isNewerPosition(Position position, DateTime? timestamp) =>
+      timestamp == null || position.timestamp.isAfter(timestamp);
 
   static bool hasMeaningfulLocationChange(
     City currentCity,
@@ -43,6 +53,20 @@ class LocationService {
       return await Geolocator.getCurrentPosition(
         locationSettings: LocationSettings(timeLimit: timeLimit),
       );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<Position?> getLastKnownPosition() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+      // Reading the platform cache avoids waking GPS during quick resumes.
+      return await Geolocator.getLastKnownPosition();
     } catch (_) {
       return null;
     }

@@ -38,6 +38,14 @@ class CityRepositoryImpl implements CityRepository {
   @override
   Future<void> saveCurrentLocationCity(City city) =>
       _local.saveCurrentLocationCity(city);
+
+  @override
+  Future<DateTime?> loadCurrentLocationUpdatedAt() =>
+      _local.loadCurrentLocationUpdatedAt();
+
+  @override
+  Future<void> saveCurrentLocationUpdatedAt(DateTime updatedAt) =>
+      _local.saveCurrentLocationUpdatedAt(updatedAt);
 }
 
 class WeatherRepositoryImpl implements WeatherRepository {

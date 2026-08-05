@@ -13,6 +13,7 @@ class WeatherLocalDataSource {
   static const _mainCityIndexKey = 'main_city_index';
   static const _currentLocationEnabledKey = 'current_location_enabled';
   static const _currentLocationCityKey = 'current_location_city';
+  static const _currentLocationUpdatedAtKey = 'current_location_updated_at';
 
   Future<List<City>> loadCities() async {
     final raw = (await SharedPreferences.getInstance()).getString(_citiesKey);
@@ -64,6 +65,20 @@ class WeatherLocalDataSource {
   Future<void> saveCurrentLocationCity(City city) async =>
       (await SharedPreferences.getInstance())
           .setString(_currentLocationCityKey, jsonEncode(city.toJson()));
+
+  Future<DateTime?> loadCurrentLocationUpdatedAt() async {
+    final milliseconds = (await SharedPreferences.getInstance())
+        .getInt(_currentLocationUpdatedAtKey);
+    return milliseconds == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(milliseconds);
+  }
+
+  Future<void> saveCurrentLocationUpdatedAt(DateTime updatedAt) async =>
+      (await SharedPreferences.getInstance()).setInt(
+        _currentLocationUpdatedAtKey,
+        updatedAt.millisecondsSinceEpoch,
+      );
 
   Future<WeatherSnapshot?> loadCachedWeather(
     City city, {

@@ -239,6 +239,7 @@ class _HomePageState extends State<HomePage> {
     bool enableLocation = false,
     bool showFeedback = false,
     bool moveToFirst = false,
+    bool forceActiveLocation = false,
   }) async {
     if (_locationRefreshInProgress) return true;
     _locationRefreshInProgress = true;
@@ -251,8 +252,41 @@ class _HomePageState extends State<HomePage> {
         );
       }
 
-      final position = await LocationService.getCurrentPosition();
-      if (position == null) {
+      final repository = AppDependencies.cityRepository;
+      final previousCity =
+          _currentLocationCity ?? await repository.loadCurrentLocationCity();
+      final locationUpdatedAt =
+          await repository.loadCurrentLocationUpdatedAt();
+
+      Position? position;
+      var useStoredCity = false;
+      if (forceActiveLocation) {
+        position = await LocationService.getCurrentPosition();
+      } else {
+        final lastKnown = await LocationService.getLastKnownPosition();
+        final lastKnownIsNewer = lastKnown != null &&
+            LocationService.isNewerPosition(lastKnown, locationUpdatedAt);
+        final lastKnownChanged = lastKnown != null &&
+            previousCity != null &&
+            LocationService.hasMeaningfulLocationChange(
+              previousCity,
+              lastKnown,
+            );
+
+        if (lastKnown != null &&
+            lastKnownIsNewer &&
+            (lastKnownChanged ||
+                LocationService.isLocationFixFresh(lastKnown.timestamp))) {
+          position = lastKnown;
+        } else if (previousCity != null &&
+            LocationService.isLocationFixFresh(locationUpdatedAt)) {
+          useStoredCity = true;
+        } else {
+          position = await LocationService.getCurrentPosition();
+        }
+      }
+
+      if (!useStoredCity && position == null) {
         if (showFeedback && mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           NotificationUtils.showSnackBar(
@@ -263,15 +297,24 @@ class _HomePageState extends State<HomePage> {
         return false;
       }
 
-      final repository = AppDependencies.cityRepository;
-      final previousCity =
-          _currentLocationCity ?? await repository.loadCurrentLocationCity();
-      final locationChanged = previousCity == null ||
-          LocationService.hasMeaningfulLocationChange(previousCity, position);
-      final city = locationChanged
-          ? await LocationService.getCityFromPosition(position)
-          : previousCity;
-      if (city == null) {
+      var locationChanged = false;
+      City? city = previousCity;
+      DateTime? acceptedPositionAt;
+      if (!useStoredCity) {
+        final resolvedPosition = position!;
+        locationChanged = previousCity == null ||
+            LocationService.hasMeaningfulLocationChange(
+              previousCity,
+              resolvedPosition,
+            );
+        city = locationChanged
+            ? await LocationService.getCityFromPosition(resolvedPosition)
+            : previousCity;
+        acceptedPositionAt = resolvedPosition.timestamp;
+      }
+
+      final resolvedCity = city;
+      if (resolvedCity == null) {
         if (showFeedback && mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           NotificationUtils.showSnackBar(
@@ -283,7 +326,10 @@ class _HomePageState extends State<HomePage> {
       }
 
       if (locationChanged) {
-        await repository.saveCurrentLocationCity(city);
+        await repository.saveCurrentLocationCity(resolvedCity);
+      }
+      if (acceptedPositionAt != null) {
+        await repository.saveCurrentLocationUpdatedAt(acceptedPositionAt);
       }
       if (enableLocation) {
         // Choosing location from the first-run screen enables it persistently.
@@ -294,7 +340,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _currentLocationEnabled =
             enableLocation || _currentLocationEnabled;
-        _currentLocationCity = city;
+        _currentLocationCity = resolvedCity;
         cities = _buildVisibleCities();
         if (moveToFirst) pageIndex = 0;
       });
@@ -319,7 +365,7 @@ class _HomePageState extends State<HomePage> {
         });
       }
 
-      await _loadWeather(city, force: locationChanged);
+      await _loadWeather(resolvedCity, force: locationChanged);
       return true;
     } finally {
       _locationRefreshInProgress = false;
@@ -331,6 +377,7 @@ class _HomePageState extends State<HomePage> {
       enableLocation: true,
       showFeedback: true,
       moveToFirst: true,
+      forceActiveLocation: true,
     );
   }
 
