@@ -106,13 +106,8 @@ class _WeatherViewState extends State<WeatherView>
         }
 
         final componentId = _layout[index - 1];
-        final component = _buildComponentById(componentId);
-
-        // Every sorted layout item contributes its live render bounds.
-        return RainCollisionSurface(
-          controller: _rainCollisionController,
-          child: component,
-        );
+        // Each builder registers only its painted surface, excluding headings.
+        return _buildComponentById(componentId);
       },
     );
 
@@ -161,6 +156,7 @@ class _WeatherViewState extends State<WeatherView>
           city: widget.city,
           weather: widget.weather,
           warnings: widget.warnings,
+          collisionController: _rainCollisionController,
         );
       case 'details':
         return _buildDetailsWidget(context);
@@ -396,45 +392,59 @@ class _WeatherViewState extends State<WeatherView>
                       ? '${t.hour.toString().padLeft(2, '0')}:00'
                       : '';
                   final isNow = i == 0;
-                  return Container(
-                    width: 75,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: isNow ? colorScheme.primary : colorScheme.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      border: isNow
-                          ? Border.all(color: colorScheme.primary, width: 2)
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(hourStr,
-                            style: textTheme.bodyMedium?.copyWith(
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: RainCollisionSurface(
+                      controller: _rainCollisionController,
+                      child: Container(
+                        width: 75,
+                        decoration: BoxDecoration(
+                          color:
+                              isNow ? colorScheme.primary : colorScheme.surface,
+                          borderRadius: BorderRadius.circular(24),
+                          border: isNow
+                              ? Border.all(
+                                  color: colorScheme.primary,
+                                  width: 2,
+                                )
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              hourStr,
+                              style: textTheme.bodyMedium?.copyWith(
                                 color: isNow
                                     ? colorScheme.onPrimary
-                                    : colorScheme.onSurfaceVariant)),
-                        const SizedBox(height: 4),
-                        Icon(weatherIcon(h.weatherCode),
-                            color: isNow
-                                ? colorScheme.onPrimary
-                                : colorScheme.primary,
-                            size: 28),
-                        const SizedBox(height: 4),
-                        ValueListenableBuilder<String>(
-                          valueListenable: tempUnitNotifier,
-                          builder: (context, unit, _) => Text(
-                            h.temperature != null
-                                ? '${h.temperature!.toStringAsFixed(1)}°$unit'
-                                : '-',
-                            style: textTheme.titleMedium?.copyWith(
+                                    : colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Icon(
+                              weatherIcon(h.weatherCode),
                               color: isNow
                                   ? colorScheme.onPrimary
-                                  : colorScheme.onSurfaceVariant,
+                                  : colorScheme.primary,
+                              size: 28,
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            ValueListenableBuilder<String>(
+                              valueListenable: tempUnitNotifier,
+                              builder: (context, unit, _) => Text(
+                                h.temperature != null
+                                    ? '${h.temperature!.toStringAsFixed(1)}°$unit'
+                                    : '-',
+                                style: textTheme.titleMedium?.copyWith(
+                                  color: isNow
+                                      ? colorScheme.onPrimary
+                                      : colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   );
                 },
@@ -451,7 +461,10 @@ class _WeatherViewState extends State<WeatherView>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Rainfall24hView(hourly: widget.weather.hourly),
+        Rainfall24hView(
+          hourly: widget.weather.hourly,
+          collisionController: _rainCollisionController,
+        ),
         const SizedBox(height: 24),
       ],
     );
@@ -463,7 +476,10 @@ class _WeatherViewState extends State<WeatherView>
       children: [
         SectionTitle(AppLocalizations.of(context).weatherMap),
         const SizedBox(height: 8),
-        WeatherMap(city: widget.city),
+        RainCollisionSurface(
+          controller: _rainCollisionController,
+          child: WeatherMap(city: widget.city),
+        ),
         const SizedBox(height: 20),
       ],
     );
@@ -481,17 +497,24 @@ class _WeatherViewState extends State<WeatherView>
       children: [
         SectionTitle(AppLocalizations.of(context).next7Days),
         const SizedBox(height: 8),
-        Card(
-          elevation: 3,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          color: colorScheme.surface,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-            child: SizedBox(
-              height: 230,
-              child: FutureWeatherBand(
-                  daily: daily, colorScheme: colorScheme, textTheme: textTheme),
+        RainCollisionSurface(
+          controller: _rainCollisionController,
+          child: Card(
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            color: colorScheme.surface,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+              child: SizedBox(
+                height: 230,
+                child: FutureWeatherBand(
+                  daily: daily,
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                ),
+              ),
             ),
           ),
         ),
@@ -511,10 +534,14 @@ class _WeatherViewState extends State<WeatherView>
       children: [
         SectionTitle(AppLocalizations.of(context).detailedData),
         const SizedBox(height: 8),
-        DetailedDataWidget(
+        RainCollisionSurface(
+          controller: _rainCollisionController,
+          child: DetailedDataWidget(
             current: current,
             daily: daily.first,
-            hourly: widget.weather.hourly),
+            hourly: widget.weather.hourly,
+          ),
+        ),
         const SizedBox(height: 12),
       ],
     );

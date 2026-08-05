@@ -6,12 +6,14 @@ class AIAdviceWidget extends StatefulWidget {
   final City city;
   final WeatherData weather;
   final List<WeatherWarning> warnings;
+  final RainCollisionController collisionController;
 
   const AIAdviceWidget({
     super.key,
     required this.city,
     required this.weather,
     required this.warnings,
+    required this.collisionController,
   });
 
   @override
@@ -104,111 +106,115 @@ class _AIAdviceWidgetState extends State<AIAdviceWidget> {
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          child: Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            color: colorScheme.surface,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 16,
+          // The heading is intentionally outside the physical rain surface.
+          child: RainCollisionSurface(
+            controller: widget.collisionController,
+            child: Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
               ),
-              child: FutureBuilder<_AIAdviceLoadResult>(
-                future: _aiAdviceFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    // A centered spinner gives the asynchronous state a clear focal point.
-                    return Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: colorScheme.primary,
-                          backgroundColor: colorScheme.primaryContainer,
-                        ),
-                      ),
-                    );
-                  }
-
-                  final result = snapshot.data;
-                  final config = result?.config;
-                  final hasConfiguredAI = _isAiConfigured(config);
-
-                  if (!hasConfiguredAI) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.aiAdviceNotConfigured,
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface,
-                            height: 1.4,
+              color: colorScheme.surface,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
+                child: FutureBuilder<_AIAdviceLoadResult>(
+                  future: _aiAdviceFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      // A centered spinner gives the asynchronous state a clear focal point.
+                      return Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: colorScheme.primary,
+                            backgroundColor: colorScheme.primaryContainer,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () async {
-                            await Navigator.pushNamed(
-                              context,
-                              '/llm-settings',
-                            );
-                            if (mounted) {
-                              _refreshAIAdvice();
-                            }
-                          },
-                          child: Text(l10n.aiAdviceGoConfigure),
-                        ),
-                      ],
-                    );
-                  }
+                      );
+                    }
 
-                  if (!(config?.enabled ?? false) ||
-                      result?.adviceResponse == null) {
-                    return Text(
-                      l10n.aiAdviceServiceDisabled,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    );
-                  }
+                    final result = snapshot.data;
+                    final config = result?.config;
+                    final hasConfiguredAI = _isAiConfigured(config);
 
-                  final response = result!.adviceResponse!;
-                  if (!response.success || response.advice == null) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          response.error ?? 'Failed to get AI advice',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            height: 1.4,
+                    if (!hasConfiguredAI) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.aiAdviceNotConfigured,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurface,
+                              height: 1.4,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: _refreshAIAdvice,
-                          child: Text(l10n.retry),
-                        ),
-                      ],
-                    );
-                  }
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: () async {
+                              await Navigator.pushNamed(
+                                context,
+                                '/llm-settings',
+                              );
+                              if (mounted) {
+                                _refreshAIAdvice();
+                              }
+                            },
+                            child: Text(l10n.aiAdviceGoConfigure),
+                          ),
+                        ],
+                      );
+                    }
 
-                  // The generated insight is intentionally the only success action.
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: Text(
-                      response.advice!.advice,
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onSurface,
-                        height: 1.45,
+                    if (!(config?.enabled ?? false) ||
+                        result?.adviceResponse == null) {
+                      return Text(
+                        l10n.aiAdviceServiceDisabled,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      );
+                    }
+
+                    final response = result!.adviceResponse!;
+                    if (!response.success || response.advice == null) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            response.error ?? 'Failed to get AI advice',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: _refreshAIAdvice,
+                            child: Text(l10n.retry),
+                          ),
+                        ],
+                      );
+                    }
+
+                    // The generated insight is intentionally the only success action.
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(
+                        response.advice!.advice,
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurface,
+                          height: 1.45,
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),

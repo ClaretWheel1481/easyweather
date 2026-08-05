@@ -28,7 +28,20 @@ class RainCollisionController {
       final bottomRight = rainBox.globalToLocal(
         surface.localToGlobal(surface.size.bottomRight(Offset.zero)),
       );
-      final rect = Rect.fromPoints(topLeft, bottomRight);
+      var rect = Rect.fromPoints(topLeft, bottomRight);
+
+      // A scrolled child can remain laid out outside its visible ListView.
+      final scrollViewport = RenderAbstractViewport.maybeOf(surface);
+      if (scrollViewport case final RenderBox scrollBox
+          when scrollBox.hasSize) {
+        rect = rect.intersect(
+          MatrixUtils.transformRect(
+            scrollBox.getTransformTo(rainBox),
+            Offset.zero & scrollBox.size,
+          ),
+        );
+      }
+
       if (rect.width > 0 && rect.height > 0 && rect.overlaps(viewport)) {
         regions.add(_RainCollisionRegion(rect));
       }
