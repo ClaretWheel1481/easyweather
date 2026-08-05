@@ -10,63 +10,64 @@ class WeatherBg extends StatefulWidget {
 }
 
 class _WeatherBgState extends State<WeatherBg> {
+  // Keep visual tokens separate from weather-code selection.
+  static const LinearGradient _clearGradient = LinearGradient(
+    colors: [Color(0xFF64B5F6), Color(0xFFE3F2FD)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  static const LinearGradient _cloudyGradient = LinearGradient(
+    colors: [Color.fromARGB(255, 175, 222, 243), Color(0xFFECEFF1)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  static const LinearGradient _overcastGradient = LinearGradient(
+    colors: [Color(0xFF90A4AE), Color(0xFFCFD8DC)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  static const LinearGradient _fogGradient = LinearGradient(
+    colors: [Color(0xFFECEFF1), Color(0xFFB0BEC5)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  static const LinearGradient _rainGradient = LinearGradient(
+    colors: [Color(0xFF1976D2), Color(0xFF90A4AE)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  static const LinearGradient _snowGradient = LinearGradient(
+    colors: [Color(0xFFB3E5FC), Color(0xFFE1F5FE)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  static const LinearGradient _thunderGradient = LinearGradient(
+    colors: [Color(0xFF263238), Color(0xFF607D8B)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  static const LinearGradient _fallbackGradient = LinearGradient(
+    colors: [Color(0xFF90CAF9), Color(0xFFB0BEC5)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
   @override
   Widget build(BuildContext context) {
     final code = widget.weatherCode;
-    LinearGradient gradient;
-    final isRain = rainWeatherCodes.contains(code);
-    final isThunder = thunderWeatherCodes.contains(code);
-    final isSnow = [71, 73, 75, 77, 85, 86].contains(code);
-    if (code == 0) {
-      // 晴天
-      gradient = const LinearGradient(
-        colors: [Color(0xFF64B5F6), Color(0xFFE3F2FD)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    } else if ([1, 2, 3].contains(code)) {
-      // 多云
-      gradient = const LinearGradient(
-        colors: [Color.fromARGB(255, 175, 222, 243), Color(0xFFECEFF1)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    } else if ([45, 48].contains(code)) {
-      // 雾天
-      gradient = const LinearGradient(
-        colors: [Color(0xFFECEFF1), Color(0xFFB0BEC5)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    } else if (isRain) {
-      // 雨天
-      gradient = const LinearGradient(
-        colors: [Color(0xFF1976D2), Color(0xFF90A4AE)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    } else if (isSnow) {
-      // 雪天
-      gradient = const LinearGradient(
-        colors: [Color(0xFFB3E5FC), Color(0xFFE1F5FE)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    } else if (isThunder) {
-      // 雷暴
-      gradient = const LinearGradient(
-        colors: [Color(0xFF263238), Color(0xFF607D8B)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    } else {
-      // 默认蓝灰
-      gradient = const LinearGradient(
-        colors: [Color(0xFF90CAF9), Color(0xFFB0BEC5)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    }
+    final description = weatherDesc(code);
+    final isSnow = description == 'weatherSnowy';
+    final gradient = switch (description) {
+      'weatherClear' => _clearGradient,
+      'weatherCloudy' => _cloudyGradient,
+      'weatherOvercast' => _overcastGradient,
+      'weatherFoggy' => _fogGradient,
+      'weatherDrizzle' || 'weatherRain' || 'weatherRainShower' => _rainGradient,
+      'weatherSnowy' => _snowGradient,
+      'weatherThunderstorm' => _thunderGradient,
+      _ => _fallbackGradient,
+    };
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return Stack(

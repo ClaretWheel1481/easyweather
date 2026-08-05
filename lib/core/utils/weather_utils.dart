@@ -1,35 +1,18 @@
 import '../import.dart';
 
-const Set<int> rainWeatherCodes = <int>{
-  51,
-  53,
-  55,
-  56,
-  57,
-  61,
-  63,
-  65,
-  66,
-  67,
-  80,
-  81,
-  82,
-};
-const Set<int> thunderWeatherCodes = <int>{95, 96, 99};
-
 // 天气代码转图标
 IconData weatherIcon(int? code) {
-  if (code == null) return Icons.help_outline;
-  if (code == 0) return Icons.wb_sunny;
-  if ([1, 2].contains(code)) return Icons.cloud_queue;
-  if (code == 3) return Icons.cloud;
-  if ([45, 48].contains(code)) return Icons.foggy;
-  if (rainWeatherCodes.contains(code)) {
-    return Icons.grain;
-  }
-  if ([71, 73, 75, 77, 85, 86].contains(code)) return Icons.ac_unit;
-  if (thunderWeatherCodes.contains(code)) return Icons.flash_on;
-  return Icons.cloud_queue;
+  return switch (weatherDesc(code)) {
+    'weatherUnknown' => Icons.help_outline,
+    'weatherClear' => Icons.wb_sunny,
+    'weatherCloudy' => Icons.cloud_queue,
+    'weatherOvercast' => Icons.cloud,
+    'weatherFoggy' => Icons.foggy,
+    'weatherDrizzle' || 'weatherRain' || 'weatherRainShower' => Icons.grain,
+    'weatherSnowy' => Icons.ac_unit,
+    'weatherThunderstorm' => Icons.flash_on,
+    _ => Icons.cloud_queue,
+  };
 }
 
 // 天气代码转描述
@@ -77,6 +60,14 @@ String weatherDesc(int? code) {
       return 'weatherCloudy';
   }
 }
+
+// Visual predicates use weatherDesc as the single weather-category source.
+bool isRainWeather(int? code) => switch (weatherDesc(code)) {
+      'weatherDrizzle' || 'weatherRain' || 'weatherRainShower' => true,
+      _ => false,
+    };
+
+bool isThunderWeather(int? code) => weatherDesc(code) == 'weatherThunderstorm';
 
 // 仅中英文的天气描述
 String getWeatherDescForWidget(int code, String lang) {

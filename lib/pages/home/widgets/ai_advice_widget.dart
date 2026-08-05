@@ -111,7 +111,6 @@ class _AIAdviceWidgetState extends State<AIAdviceWidget> {
             ),
             color: colorScheme.surface,
             child: Padding(
-              // Preserve vertical rhythm while giving advice more line width.
               padding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 16,
