@@ -352,105 +352,98 @@ class _WeatherViewState extends State<WeatherView>
   Widget _buildHourlyForecast(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final hourly = widget.weather.hourly;
 
-    if (widget.weather.hourly.isEmpty) return const SizedBox.shrink();
+    if (hourly.isEmpty) return const SizedBox.shrink();
+
+    // Select the next 24 entries before building to keep layout code flat.
+    final now = DateTime.now();
+    final currentOrFutureIndex = hourly.indexWhere((hour) {
+      final time = DateTime.tryParse(hour.time);
+      return time != null &&
+          (time.isAfter(now) ||
+              (time.hour == now.hour &&
+                  time.day == now.day &&
+                  time.month == now.month &&
+                  time.year == now.year));
+    });
+    final startIdx = currentOrFutureIndex < 0 ? 0 : currentOrFutureIndex;
+    final endIdx = min(startIdx + 24, hourly.length);
+    final hours = hourly.sublist(startIdx, endIdx);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionTitle(AppLocalizations.of(context).hourlyForecast),
         const SizedBox(height: 8),
-        Builder(
-          builder: (context) {
-            final now = DateTime.now();
-            int startIdx = 0;
-            for (int i = 0; i < widget.weather.hourly.length; i++) {
-              final t = DateTime.tryParse(widget.weather.hourly[i].time);
-              if (t != null &&
-                  (t.isAfter(now) ||
-                      (t.hour == now.hour &&
-                          t.day == now.day &&
-                          t.month == now.month &&
-                          t.year == now.year))) {
-                startIdx = i;
-                break;
-              }
-            }
-            final endIdx = (startIdx + 24) <= widget.weather.hourly.length
-                ? (startIdx + 24)
-                : widget.weather.hourly.length;
-            final hours = widget.weather.hourly.sublist(startIdx, endIdx);
-            return SizedBox(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: hours.length,
-                itemBuilder: (context, i) {
-                  final h = hours[i];
-                  final t = DateTime.tryParse(h.time);
-                  final hourStr = t != null
-                      ? '${t.hour.toString().padLeft(2, '0')}:00'
-                      : '';
-                  final isNow = i == 0;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: RainCollisionSurface(
-                      controller: _rainCollisionController,
-                      child: Container(
-                        width: 75,
-                        decoration: BoxDecoration(
-                          color:
-                              isNow ? colorScheme.primary : colorScheme.surface,
-                          borderRadius: BorderRadius.circular(24),
-                          border: isNow
-                              ? Border.all(
-                                  color: colorScheme.primary,
-                                  width: 2,
-                                )
-                              : null,
+        SizedBox(
+          height: 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: hours.length,
+            itemBuilder: (context, i) {
+              final h = hours[i];
+              final t = DateTime.tryParse(h.time);
+              final hourStr = t != null
+                  ? '${t.hour.toString().padLeft(2, '0')}:00'
+                  : '';
+              final isNow = i == 0;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: RainCollisionSurface(
+                  controller: _rainCollisionController,
+                  child: Container(
+                    width: 75,
+                    decoration: BoxDecoration(
+                      color: isNow ? colorScheme.primary : colorScheme.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: isNow
+                          ? Border.all(
+                              color: colorScheme.primary,
+                              width: 2,
+                            )
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          hourStr,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: isNow
+                                ? colorScheme.onPrimary
+                                : colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              hourStr,
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: isNow
-                                    ? colorScheme.onPrimary
-                                    : colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Icon(
-                              weatherIcon(h.weatherCode),
+                        const SizedBox(height: 4),
+                        Icon(
+                          weatherIcon(h.weatherCode),
+                          color: isNow
+                              ? colorScheme.onPrimary
+                              : colorScheme.primary,
+                          size: 28,
+                        ),
+                        const SizedBox(height: 4),
+                        ValueListenableBuilder<String>(
+                          valueListenable: tempUnitNotifier,
+                          builder: (context, unit, _) => Text(
+                            h.temperature != null
+                                ? '${h.temperature!.toStringAsFixed(1)}°$unit'
+                                : '-',
+                            style: textTheme.titleMedium?.copyWith(
                               color: isNow
                                   ? colorScheme.onPrimary
-                                  : colorScheme.primary,
-                              size: 28,
+                                  : colorScheme.onSurfaceVariant,
                             ),
-                            const SizedBox(height: 4),
-                            ValueListenableBuilder<String>(
-                              valueListenable: tempUnitNotifier,
-                              builder: (context, unit, _) => Text(
-                                h.temperature != null
-                                    ? '${h.temperature!.toStringAsFixed(1)}°$unit'
-                                    : '-',
-                                style: textTheme.titleMedium?.copyWith(
-                                  color: isNow
-                                      ? colorScheme.onPrimary
-                                      : colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  );
-                },
-              ),
-            );
-          },
+                  ),
+                ),
+              );
+            },
+          ),
         ),
         const SizedBox(height: 24),
       ],

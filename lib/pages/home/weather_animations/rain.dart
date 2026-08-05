@@ -162,20 +162,15 @@ class _RainAnimationState extends State<RainAnimation>
       width: double.infinity,
       height: widget.maxHeight,
       child: RepaintBoundary(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return CustomPaint(
-              key: _paintKey,
-              isComplex: true,
-              willChange: true,
-              painter: _RainPainter(
-                simulation: _simulation,
-                elapsed: _controller.lastElapsedDuration ?? Duration.zero,
-                collisionRegions: _collisionRegions,
-              ),
-            );
-          },
+        child: CustomPaint(
+          key: _paintKey,
+          isComplex: true,
+          willChange: true,
+          painter: _RainPainter(
+            simulation: _simulation,
+            controller: _controller,
+            collisionRegions: _collisionRegions,
+          ),
         ),
       ),
     );
@@ -404,33 +399,38 @@ class _RainSimulation {
   }
 
   void _drawSplashes(Canvas canvas) {
+    // Reuse mutable paints across fragments to avoid per-frame allocations.
+    final footprintPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 0.7;
+    final fragmentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
     for (final splash in _splashes) {
       final progress = splash.age / splash.lifetime;
       final opacity = pow(1 - progress, 2).toDouble();
       final tangent = Offset(-splash.normal.dy, splash.normal.dx);
       final spread = (3 + splash.impact * 7) * (0.35 + progress * 0.65);
-      final footprintPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = 0.7
-        ..color = const Color(0xFFD9F1FC).withValues(alpha: opacity * 0.55);
+      footprintPaint.color =
+          const Color(0xFFD9F1FC).withValues(alpha: opacity * 0.55);
       canvas.drawLine(
         splash.origin - tangent * spread,
         splash.origin + tangent * spread,
         footprintPaint,
       );
 
+      final gravityOffset =
+          Offset(0, 0.5 * _sprayGravity * splash.age * splash.age);
+      fragmentPaint.color =
+          const Color(0xFFE3F6FF).withValues(alpha: opacity * 0.8);
       for (final fragment in splash.fragments) {
-        final position = splash.origin +
-            fragment.velocity * splash.age +
-            Offset(0, 0.5 * _sprayGravity * splash.age * splash.age);
+        final position =
+            splash.origin + fragment.velocity * splash.age + gravityOffset;
         final speed = fragment.velocity.distance;
         final direction = speed > 0 ? fragment.velocity / speed : Offset.zero;
-        final fragmentPaint = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeWidth = fragment.thickness
-          ..color = const Color(0xFFE3F6FF).withValues(alpha: opacity * 0.8);
+        fragmentPaint.strokeWidth = fragment.thickness;
         canvas.drawLine(
           position - direction * (1.5 + fragment.thickness),
           position,
@@ -486,8 +486,7 @@ class _RainDrop {
         _lerp(680, 1450, depth) * _lerp(0.88, 1.12, random.nextDouble());
     final windBias = _lerp(-38, 38, random.nextDouble());
     final margin = max(28.0, size.width * 0.12).toDouble();
-    final respawnRange =
-        min(360.0, max(180.0, size.height * 0.45)).toDouble();
+    final respawnRange = min(360.0, max(180.0, size.height * 0.45)).toDouble();
     final positionY = initial
         ? -random.nextDouble() * (size.height + 160)
         : -_lerp(
@@ -509,15 +508,12 @@ class _RainDrop {
       terminalSpeed: terminalSpeed,
       // Tie motion-blur length to velocity so faster foreground drops leave
       // longer streaks instead of uniformly sized lines.
-      length: terminalSpeed *
-          exposure *
-          _lerp(0.9, 1.1, random.nextDouble()),
+      length: terminalSpeed * exposure * _lerp(0.9, 1.1, random.nextDouble()),
       thickness:
           _lerp(0.46, 1.65, depth) * _lerp(0.86, 1.12, random.nextDouble()),
-      opacity:
-          (_lerp(0.12, 0.4, depth) * _lerp(0.84, 1.1, random.nextDouble()))
-              .clamp(0.1, 0.42)
-              .toDouble(),
+      opacity: (_lerp(0.12, 0.4, depth) * _lerp(0.84, 1.1, random.nextDouble()))
+          .clamp(0.1, 0.42)
+          .toDouble(),
       depth: depth,
       windBias: windBias,
       gustPhase: random.nextDouble() * pi * 2,
@@ -588,24 +584,34 @@ class _RainSplashFragment {
   final double thickness;
 }
 
+/// Repaints the retained simulation directly from the animation ticker.
 class _RainPainter extends CustomPainter {
-  const _RainPainter({
+  _RainPainter({
     required this.simulation,
-    required this.elapsed,
+    required this.controller,
     required this.collisionRegions,
-  });
+  }) : super(repaint: controller);
 
   final _RainSimulation simulation;
-  final Duration elapsed;
+  final AnimationController controller;
   final List<_RainCollisionRegion> Function() collisionRegions;
 
   @override
   void paint(Canvas canvas, Size size) {
-    simulation.paint(canvas, size, elapsed, collisionRegions());
+    simulation.paint(
+      canvas,
+      size,
+      controller.lastElapsedDuration ?? Duration.zero,
+      collisionRegions(),
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _RainPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _RainPainter oldDelegate) {
+    return !identical(simulation, oldDelegate.simulation) ||
+        !identical(controller, oldDelegate.controller) ||
+        collisionRegions != oldDelegate.collisionRegions;
+  }
 }
 
 class _RainCollisionRegion {
